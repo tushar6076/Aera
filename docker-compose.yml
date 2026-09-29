@@ -1,0 +1,30 @@
+services:
+  aera-cloud:
+    build:
+      context: ./aera-cloud
+      dockerfile: Dockerfile
+    container_name: aera-cloud
+    restart: unless-stopped
+    ports:
+      - "8084:8084"
+    env_file:
+      - ./aera-cloud/.env
+    networks:
+      - aera-network
+
+  aera-web:
+    build:
+      context: ./aera-web
+      dockerfile: Dockerfile
+    container_name: aera-web
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - aera-cloud
+    networks:
+      - aera-network
+
+networks:
+  aera-network:
+    driver: bridge

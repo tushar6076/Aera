@@ -1,0 +1,21 @@
+# Compiled binaries & object files
+*.bin
+*.elf
+*.hex
+*.map
+*.o
+*.a
+*.d
+
+# Build artifacts & partitions
+build/
+*.partitions.bin
+*.bootloader.bin
+*.merged.bin
+flash_args
+*.build_opt.h
+
+# Toolchain / IDE cache
+.pio/
+.vscode/
+compile_commands.json

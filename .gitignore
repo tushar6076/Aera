@@ -1,0 +1,122 @@
+# ==============================================================================
+# OS & Editor Artifacts
+# ==============================================================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Editor & IDE configs
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# AI agent caches / local logs
+.claude/
+CLAUDE.local.md
+
+# ==============================================================================
+# Environment & Secret Tokens (CRITICAL)
+# ==============================================================================
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+*.crt
+
+# ==============================================================================
+# Embedded / Arduino & PlatformIO (aera-aqi)
+# ==============================================================================
+# Arduino build caches & compilation outputs
+*.bin
+*.elf
+*.hex
+*.map
+*.o
+*.a
+*.d
+build/
+*.build_opt.h
+
+# CMake / PlatformIO / CLion local directories
+.pio/
+.pioenvs/
+.piolibdeps/
+cmake-build-*/
+compile_commands.json
+
+# ==============================================================================
+# Python / FastAPI Backend (aera-cloud)
+# ==============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# SQLite databases (local dev)
+*.sqlite3
+*.db
+
+# ==============================================================================
+# Node.js / Web & Mobile (aera-web & aera-app)
+# ==============================================================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Vite production build
+aera-web/dist/
+aera-web/dist-ssr/
+
+# Expo / React Native build artifacts & caches
+.expo/
+.expo-shared/
+web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# Android / iOS generated folders in Expo bare/prebuild
+aera-app/android/
+aera-app/ios/
+*.apk
+*.aab
+*.ipa
+
+# ==============================================================================
+# Logs & Diagnostic Dumps
+# ==============================================================================
+logs/
+*.log
+npm-debug.log*
