@@ -48,11 +48,11 @@ COPY --chown=aera:aera main.py .
 
 USER aera
 
-EXPOSE 8084
+EXPOSE 8085
 
 # Health check to ensure ASGI server is accepting connections
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:8084/docs || exit 1
+    CMD curl -f http://localhost:8085/docs || exit 1
 
 # Launch production server with Uvicorn
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8084", "--proxy-headers", "--forwarded-allow-ips=*"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8085", "--proxy-headers", "--forwarded-allow-ips=*"]

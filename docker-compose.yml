@@ -6,7 +6,7 @@ services:
     container_name: aera-cloud
     restart: unless-stopped
     ports:
-      - "8084:8084"
+      - "8085:8085"
     env_file:
       - ./aera-cloud/.env
     networks:

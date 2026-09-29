@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
-    PORT: int = 8084
+    PORT: int = 8085
     HOST: str = "0.0.0.0"
 
     # Security
@@ -43,14 +43,28 @@ class Settings(BaseSettings):
     # Cloudflare & Domain Endpoints
     CLOUDFLARE_TUNNEL_TOKEN: str | None = None
     CLOUD_BASE_URL: str = "https://aera-cloud.hacksmiths.dev"
-    WEB_BASE_URL: str = "https://aera-web.hacksmiths.dev"
+    WEB_BASE_URL: str = "https://aera.hacksmiths.dev"
+
+    # Mobile App Configuration
+    MOBILE_APP_SCHEME: str = "aera://"
+    EXPO_PROJECT_ID: str | None = None
 
     # CORS
     BACKEND_CORS_ORIGINS: Union[List[str], str] = [
-        "http://localhost:3000",
+        # Vite Dashboard
+        "http://localhost:5175",
+        "http://127.0.0.1:5175",
         "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
         "http://127.0.0.1:3000",
-        "https://aera-web.hacksmiths.dev",
+        # Expo / React Native Dev Servers
+        "http://localhost:8081",
+        "http://127.0.0.1:8081",
+        "http://localhost:19000",
+        "http://localhost:19006",
+        # Cloudflare Tunnel Domains
+        "https://aera.hacksmiths.dev",
         "https://aera-cloud.hacksmiths.dev",
     ]
 
