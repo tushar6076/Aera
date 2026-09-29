@@ -1,16 +1,19 @@
 import React from "react";
+import { CloudOff } from "lucide-react";
 
 export default function EmptyState({
   title = "No Data Found",
   description = "No sensor readings registered yet.",
 }) {
   return (
-    <div className="flex flex-col items-center justify-center p-8 text-center bg-slate-900/50 border border-slate-800 rounded-3xl">
-      <div className="w-12 h-12 mb-3 rounded-2xl bg-slate-800/80 flex items-center justify-center text-slate-400 text-xl">
-        ☁️
+    <div className="flex flex-col items-center justify-center p-8 text-center bg-card border border-border rounded-3xl shadow-xs">
+      <div className="w-12 h-12 mb-3.5 rounded-2xl bg-sky-50 border border-sky-100 flex items-center justify-center text-sky-600">
+        <CloudOff className="w-6 h-6" />
       </div>
-      <h3 className="text-base font-semibold text-slate-200">{title}</h3>
-      <p className="text-xs text-slate-400 max-w-sm mt-1">{description}</p>
+      <h3 className="text-base font-semibold text-foreground">{title}</h3>
+      <p className="text-xs text-muted-foreground max-w-sm mt-1 leading-relaxed">
+        {description}
+      </p>
     </div>
   );
 }

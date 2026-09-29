@@ -14,19 +14,21 @@ function CustomTooltip({ active, payload }) {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
-      <div className="rounded-xl border border-slate-800 bg-slate-950/90 p-3 shadow-2xl backdrop-blur-md">
-        <p className="text-xs text-slate-400 font-mono mb-2">
+      <div className="rounded-2xl border border-border bg-card p-3 shadow-lg">
+        <p className="text-xs text-muted-foreground font-mono mb-2">
           {formatDate(data.timestamp || data.created_at)}
         </p>
         <div className="space-y-1 text-xs">
-          <p className="font-semibold text-sky-400">
-            AQI: <span className="font-mono text-white">{data.aqi}</span>
+          {data.aqi !== undefined && (
+            <p className="font-semibold text-sky-600">
+              AQI: <span className="font-mono text-foreground">{data.aqi}</span>
+            </p>
+          )}
+          <p className="text-muted-foreground">
+            PM2.5: <span className="font-mono text-foreground">{data.pm2_5} µg/m³</span>
           </p>
-          <p className="text-slate-300">
-            PM2.5: <span className="font-mono text-slate-100">{data.pm2_5} µg/m³</span>
-          </p>
-          <p className="text-slate-300">
-            PM10: <span className="font-mono text-slate-100">{data.pm10} µg/m³</span>
+          <p className="text-muted-foreground">
+            PM10: <span className="font-mono text-foreground">{data.pm10} µg/m³</span>
           </p>
         </div>
       </div>
@@ -43,22 +45,22 @@ export default function AQIChart({ data = [] }) {
 
   if (chartData.length === 0) {
     return (
-      <div className="flex h-72 items-center justify-center rounded-3xl border border-slate-800 bg-slate-900/40 p-6 text-sm text-slate-500">
-        Awaiting sensor data points to generate trend graph...
+      <div className="flex h-64 items-center justify-center rounded-3xl border border-border bg-card p-6 text-xs text-muted-foreground">
+        Gathering telemetry sequence to plot atmospheric curve...
       </div>
     );
   }
 
   return (
-    <div className="rounded-3xl border border-slate-800 bg-slate-900/60 p-6 backdrop-blur-xl">
+    <div className="rounded-3xl border border-border bg-card p-6 shadow-xs">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-base font-semibold text-white">Atmospheric Trend</h3>
-          <p className="text-xs text-slate-400">Real-time NAQI timeline</p>
+          <h3 className="text-base font-semibold text-foreground">Atmospheric Trend</h3>
+          <p className="text-xs text-muted-foreground">Historical particulate curve</p>
         </div>
         <div className="flex items-center space-x-1.5 text-xs">
           <span className="h-2 w-2 rounded-full bg-sky-500" />
-          <span className="text-slate-400">AQI Index</span>
+          <span className="text-muted-foreground">PM2.5 Particle Flow</span>
         </div>
       </div>
 
@@ -66,34 +68,34 @@ export default function AQIChart({ data = [] }) {
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <defs>
-              <linearGradient id="aqiGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.35} />
+              <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.25} />
                 <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0.0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
             <XAxis
               dataKey="timeLabel"
-              stroke="#64748b"
+              stroke="#94a3b8"
               fontSize={11}
               tickLine={false}
               axisLine={false}
             />
             <YAxis
-              stroke="#64748b"
+              stroke="#94a3b8"
               fontSize={11}
               tickLine={false}
               axisLine={false}
-              domain={[0, "dataMax + 40"]}
+              domain={[0, "dataMax + 20"]}
             />
             <Tooltip content={<CustomTooltip />} />
             <Area
               type="monotone"
-              dataKey="aqi"
+              dataKey="pm2_5"
               stroke="#0ea5e9"
               strokeWidth={2.5}
               fillOpacity={1}
-              fill="url(#aqiGradient)"
+              fill="url(#chartGradient)"
             />
           </AreaChart>
         </ResponsiveContainer>

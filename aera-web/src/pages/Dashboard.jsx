@@ -8,7 +8,6 @@ import PollutantCard from "@/components/dashboard/PollutantCard";
 import RecommendationCard from "@/components/dashboard/RecommendationCard";
 import OutdoorStatus from "@/components/dashboard/OutdoorStatus";
 import Loading from "@/components/common/Loading";
-import EmptyState from "@/components/common/EmptyState";
 
 export default function Dashboard() {
   const {
@@ -20,12 +19,16 @@ export default function Dashboard() {
     claim,
   } = useDevice();
 
+  // Selected device ID if available; otherwise undefined initiates ambient weather mode
   const {
+    cityName,
+    weatherMetrics,
     currentReading,
     history,
     recommendation,
     connected,
     loading: aqiLoading,
+    isHardwareActive,
   } = useAQI(selectedDevice?.id);
 
   const deviceContext = {
@@ -39,62 +42,50 @@ export default function Dashboard() {
     history,
   };
 
-  if (devicesLoading) {
+  if (aqiLoading && !currentReading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <Loading message="Syncing hardware telemetry network..." />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loading message="Synthesizing atmospheric telemetry..." />
       </div>
     );
   }
 
   return (
     <AppLayout isConnected={connected} deviceContext={deviceContext}>
-      {devices.length === 0 ? (
-        <div className="pt-16 max-w-md mx-auto text-center space-y-4">
-          <EmptyState
-            title="No Monitor Configured"
-            description="Open the Overview panel from the top right to pair your ESP32 node and initialize live ingestion."
-          />
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {/* Main Hero Card */}
-          <AQICard
-            reading={
-              currentReading || {
-                aqi: 0,
-                category: "Calibrating",
-                temperature: null,
-                humidity: null,
-                timestamp: new Date().toISOString(),
-              }
-            }
-            isConnected={connected}
-          />
+      <div className="space-y-6">
+        {/* Main AQI / Weather Banner */}
+        <AQICard
+          reading={currentReading}
+          isConnected={connected}
+          isHardwareActive={isHardwareActive}
+          locationName={cityName}
+        />
 
-          {/* Particulates & Outdoor Dispersion */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <PollutantCard
-                pm2_5={currentReading?.pm2_5}
-                pm10={currentReading?.pm10}
-              />
-            </div>
-            <div className="lg:col-span-1">
-              <OutdoorStatus reading={currentReading} />
-            </div>
+        {/* Particulates & Outdoor Dispersion */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <PollutantCard
+              pm2_5={currentReading?.pm2_5}
+              pm10={currentReading?.pm10}
+            />
           </div>
-
-          {/* AI Precaution Advisor */}
-          <RecommendationCard
-            recommendation={recommendation}
-            loading={aqiLoading && !recommendation}
-          />
-
-          {/* Telemetry Trend Chart */}
-          <AQIChart data={history} />
+          <div className="lg:col-span-1">
+            <OutdoorStatus
+              reading={currentReading}
+              weatherMetrics={weatherMetrics}
+            />
+          </div>
         </div>
-      )}
+
+        {/* Groq AI Precaution Advisor */}
+        <RecommendationCard
+          recommendation={recommendation}
+          loading={aqiLoading && !recommendation}
+        />
+
+        {/* Atmospheric Trend Graph */}
+        <AQIChart data={history} />
+      </div>
     </AppLayout>
   );
 }

@@ -1,31 +1,49 @@
-AQI_RECOMMENDATION_SYSTEM_PROMPT = """You are Aera, a supportive personal air quality health advisor.
-Your objective is to translate complex atmospheric sensor telemetry into actionable, consumer-friendly daily precautions.
+# app/services/ai/prompts.py
 
-GUIDELINES:
-1. Speak in clear, friendly language. Avoid technical jargon or raw microgram formulas unless practical.
-2. Structure advice into 3 concise bullet points:
-   - Outdoor Activities (e.g., walking, jogging, outdoor work)
-   - Home Environment (e.g., window ventilation, air purifiers)
-   - Personal Protection (e.g., N95 masks, hydration, vulnerable group precautions)
-3. Keep the entire response under 100 words so it fits comfortably on mobile screens and web dashboard cards.
-"""
+AQI_RECOMMENDATION_SYSTEM_PROMPT = """You are Aera's atmospheric health intelligence engine.
+Analyze real-time atmospheric readings (AQI, category, temperature, humidity, and pollutants).
+Return an objective health advisory and tailored precautions.
+
+You must respond ONLY with a valid, raw JSON object matching this schema:
+{
+  "aqi": <int>,
+  "category": "<Good | Moderate | Unhealthy for Sensitive Groups | Unhealthy | Very Unhealthy | Hazardous>",
+  "tone": "<emerald | sky | amber | rose>",
+  "summary": "<Concise 1-sentence physiological assessment>",
+  "precautions": [
+    "<Actionable precaution 1>",
+    "<Actionable precaution 2>",
+    "<Actionable precaution 3>"
+  ],
+  "vulnerable_groups_warning": "<Targeted guidance for respiratory/cardiac risks, elderly, or children>"
+}
+Do not enclose in markdown code fences. Return raw JSON only."""
 
 
 def build_recommendation_prompt(
     aqi: int,
     category: str,
-    temp: float | None = None,
-    hum: float | None = None,
+    temperature: float | None = None,
+    humidity: float | None = None,
+    pm2_5: float | None = None,
+    pm10: float | None = None,
+    co: float | None = None,
+    source: str = "ambient",
 ) -> str:
-    weather_parts = []
-    if temp is not None:
-        weather_parts.append(f"Temperature: {temp}°C")
-    if hum is not None:
-        weather_parts.append(f"Humidity: {hum}%")
-    weather_str = f" ({', '.join(weather_parts)})" if weather_parts else ""
+    parts = [
+        f"Source: {source}",
+        f"AQI: {aqi}",
+        f"Category: {category}",
+    ]
+    if temperature is not None:
+        parts.append(f"Temperature: {temperature:.1f}°C")
+    if humidity is not None:
+        parts.append(f"Relative Humidity: {humidity:.1f}%")
+    if pm2_5 is not None:
+        parts.append(f"PM2.5: {pm2_5:.1f} µg/m³")
+    if pm10 is not None:
+        parts.append(f"PM10: {pm10:.1f} µg/m³")
+    if co is not None:
+        parts.append(f"CO: {co:.1f} µg/m³")
 
-    return f"""Current Air Quality:
-- AQI Index: {aqi}
-- Category: {category}{weather_str}
-
-Provide 3 quick, everyday precautions for normal people based on this reading."""
+    return "Live Atmospheric Telemetry:\n" + "\n".join(parts)

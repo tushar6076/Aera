@@ -17,7 +17,7 @@ export default function AppLayout({ children, isConnected = true, deviceContext 
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col text-slate-100 antialiased selection:bg-sky-500/20 selection:text-sky-300">
+    <div className="min-h-screen bg-background flex flex-col text-foreground antialiased selection:bg-sky-500/15 selection:text-sky-700">
       <Navbar
         isConnected={isConnected}
         onOpenPanel={handleOpenPanel}

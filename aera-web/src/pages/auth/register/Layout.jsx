@@ -67,41 +67,42 @@ export default function RegisterLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-background flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+      {/* Cool Atmospheric Ambient Glow */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-200/35 rounded-full blur-3xl pointer-events-none" />
 
       <div className="w-full max-w-md space-y-8 relative z-10">
         <div className="text-center space-y-2">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-sky-600 to-indigo-600 text-white shadow-lg shadow-sky-500/20 mb-2">
+          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-sky-600 to-indigo-600 text-white shadow-md shadow-sky-500/20 mb-2">
             <Wind className="w-6 h-6" />
           </div>
-          <h2 className="text-3xl font-extrabold text-white tracking-tight">Create Workspace</h2>
-          <p className="text-xs sm:text-sm text-slate-400">
+          <h2 className="text-3xl font-extrabold text-foreground tracking-tight">Create Workspace</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground">
             Join the Aera environmental telemetry network
           </p>
         </div>
 
-        <div className="rounded-3xl border border-slate-800/80 bg-slate-900/60 p-6 sm:p-8 backdrop-blur-xl shadow-2xl shadow-slate-950/50">
+        <div className="rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-sm backdrop-blur-xl">
           {/* Progress Tracker */}
-          <div className="flex items-center justify-between pb-6 mb-6 border-b border-slate-800/80">
+          <div className="flex items-center justify-between pb-6 mb-6 border-b border-border/80">
             <div className="flex items-center gap-2">
               <div
                 className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold transition-colors ${
                   step === 1
-                    ? "bg-sky-500 text-white"
-                    : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
+                    ? "bg-sky-600 text-white shadow-xs"
+                    : "bg-emerald-50 text-emerald-700 border border-emerald-200"
                 }`}
               >
                 {step > 1 ? <Check className="w-3.5 h-3.5" /> : "1"}
               </div>
-              <span className={`text-xs font-medium text-left ${step === 1 ? "text-white" : "text-slate-400"}`}>
+              <span className={`text-xs font-semibold text-left ${step === 1 ? "text-foreground" : "text-muted-foreground"}`}>
                 Identity
               </span>
             </div>
 
-            <div className="h-0.5 flex-1 mx-4 bg-slate-800">
+            <div className="h-0.5 flex-1 mx-4 bg-muted">
               <div
-                className={`h-full bg-sky-500 transition-all duration-300 ${
+                className={`h-full bg-sky-600 transition-all duration-300 ${
                   step === 2 ? "w-full" : "w-0"
                 }`}
               />
@@ -111,21 +112,21 @@ export default function RegisterLayout() {
               <div
                 className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold transition-colors ${
                   step === 2
-                    ? "bg-sky-500 text-white"
-                    : "bg-slate-800 text-slate-400"
+                    ? "bg-sky-600 text-white shadow-xs"
+                    : "bg-muted text-muted-foreground"
                 }`}
               >
                 2
               </div>
-              <span className={`text-xs font-medium text-left ${step === 2 ? "text-white" : "text-slate-500"}`}>
+              <span className={`text-xs font-semibold text-left ${step === 2 ? "text-foreground" : "text-muted-foreground"}`}>
                 Security
               </span>
             </div>
           </div>
 
           {error && (
-            <div className="mb-6 flex items-center gap-2 p-3 text-xs text-rose-400 bg-rose-950/40 border border-rose-900/60 rounded-xl text-left">
-              <AlertCircle className="w-4 h-4 shrink-0" />
+            <div className="mb-6 flex items-center gap-2 p-3 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-xl text-left">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
               <span>{error}</span>
             </div>
           )}

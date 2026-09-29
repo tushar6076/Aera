@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Cpu, Plus, AlertCircle } from "lucide-react";
+import { Cpu, Plus, AlertCircle, Sparkles } from "lucide-react";
 
 export default function OverviewPanel({ deviceContext, onSwitchTab }) {
   const { user } = useAuth();
@@ -51,17 +51,17 @@ export default function OverviewPanel({ deviceContext, onSwitchTab }) {
   return (
     <div className="space-y-6">
       {/* User Card */}
-      <Card className="border-slate-800 bg-slate-950/60 p-4">
+      <Card className="border border-border bg-card p-4 shadow-2xs rounded-2xl">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-500/10 border border-sky-500/30 text-sky-400 font-bold text-sm">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-sky-50 border border-sky-200 text-sky-700 font-bold text-sm">
               {initial}
             </div>
             <div className="min-w-0">
-              <h4 className="text-sm font-bold text-white truncate">
+              <h4 className="text-sm font-bold text-foreground truncate">
                 {user?.full_name || "Aera Operator"}
               </h4>
-              <p className="text-xs text-slate-400 truncate">{user?.email}</p>
+              <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
             </div>
           </div>
 
@@ -69,7 +69,7 @@ export default function OverviewPanel({ deviceContext, onSwitchTab }) {
             variant="ghost"
             size="sm"
             onClick={() => onSwitchTab("settings")}
-            className="text-xs font-semibold text-sky-400 hover:text-sky-300 hover:bg-sky-950/40 cursor-pointer"
+            className="text-xs font-semibold text-sky-600 hover:text-sky-700 hover:bg-sky-50 cursor-pointer"
           >
             Edit
           </Button>
@@ -77,21 +77,21 @@ export default function OverviewPanel({ deviceContext, onSwitchTab }) {
       </Card>
 
       {/* Active Hardware Telemetry Vitals */}
-      <Card className="border-slate-800 bg-slate-950/60 p-4 space-y-3">
+      <Card className="border border-border bg-card p-4 space-y-3 shadow-2xs rounded-2xl">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
             Active Hardware Vitals
           </span>
           <Badge
             variant="outline"
-            className="flex items-center gap-1.5 border-slate-800 bg-slate-900/60 text-[11px]"
+            className="flex items-center gap-1.5 border-border bg-muted/30 text-[11px] font-medium"
           >
             <span
               className={`h-2 w-2 rounded-full ${
-                connected ? "bg-emerald-400 animate-pulse" : "bg-rose-500"
+                connected ? "bg-emerald-500 animate-pulse" : "bg-rose-500"
               }`}
             />
-            <span className={connected ? "text-emerald-400" : "text-rose-400"}>
+            <span className={connected ? "text-emerald-700" : "text-rose-600"}>
               {connected ? "Online Stream" : "Disconnected"}
             </span>
           </Badge>
@@ -99,45 +99,47 @@ export default function OverviewPanel({ deviceContext, onSwitchTab }) {
 
         {selectedDevice ? (
           <div className="space-y-2 pt-1 font-mono text-xs">
-            <div className="flex items-center justify-between text-slate-300">
-              <span className="text-slate-500">Hardware ID</span>
-              <span className="text-white font-bold">{selectedDevice.id}</span>
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span>Hardware ID</span>
+              <span className="text-foreground font-bold">{selectedDevice.id}</span>
             </div>
-            <div className="flex items-center justify-between text-slate-300">
-              <span className="text-slate-500">Node Name</span>
-              <span>{selectedDevice.name || "Default Node"}</span>
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span>Node Name</span>
+              <span className="text-foreground">{selectedDevice.name || "Default Node"}</span>
             </div>
-            <div className="flex items-center justify-between text-slate-300">
-              <span className="text-slate-500">Sensors Active</span>
-              <span className="text-sky-400 font-sans font-medium">
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span>Sensors Active</span>
+              <span className="text-sky-600 font-sans font-medium">
                 PMS5003 + DHT22
               </span>
             </div>
-            <div className="flex items-center justify-between text-slate-300">
-              <span className="text-slate-500">Last Telemetry</span>
-              <span>
-                {currentReading?.timestamp
-                  ? new Date(currentReading.timestamp).toLocaleTimeString()
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span>Last Telemetry</span>
+              <span className="text-foreground">
+                {currentReading?.timestamp || currentReading?.created_at
+                  ? new Date(currentReading.timestamp || currentReading.created_at).toLocaleTimeString()
                   : "Standby"}
               </span>
             </div>
           </div>
         ) : (
-          <p className="text-xs text-slate-500 py-2">No active node selected.</p>
+          <p className="text-xs text-muted-foreground py-2">
+            No active hardware selected. Ambient mode is supplying regional forecast metrics.
+          </p>
         )}
       </Card>
 
       {/* Paired Device Hub */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
             Paired Nodes ({devices.length})
           </span>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setIsPairing((prev) => !prev)}
-            className="h-7 text-xs font-semibold text-sky-400 hover:text-sky-300 hover:bg-sky-950/40 gap-1 cursor-pointer"
+            className="h-7 text-xs font-semibold text-sky-600 hover:text-sky-700 hover:bg-sky-50 gap-1 cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Pair Node</span>
@@ -147,12 +149,12 @@ export default function OverviewPanel({ deviceContext, onSwitchTab }) {
         {isPairing && (
           <form
             onSubmit={handlePairSubmit}
-            className="p-3.5 rounded-2xl border border-sky-500/30 bg-sky-950/20 space-y-3"
+            className="p-3.5 rounded-2xl border border-sky-200 bg-sky-50/40 space-y-3 shadow-2xs"
           >
-            <h5 className="text-xs font-bold text-white">Add ESP32 Node</h5>
+            <h5 className="text-xs font-bold text-foreground">Add ESP32 Node</h5>
             {errorMsg && (
-              <div className="flex items-center gap-1.5 text-[11px] text-rose-400">
-                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              <div className="flex items-center gap-1.5 text-[11px] text-rose-700 bg-rose-50 border border-rose-200 p-2 rounded-lg">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-600" />
                 <span>{errorMsg}</span>
               </div>
             )}
@@ -162,14 +164,14 @@ export default function OverviewPanel({ deviceContext, onSwitchTab }) {
               placeholder="Hardware ID (e.g. esp32-aqi-node-01)"
               value={deviceId}
               onChange={(e) => setDeviceId(e.target.value)}
-              className="bg-slate-950 border-slate-800 text-xs h-8"
+              className="bg-card border-border text-xs h-8 text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-sky-500"
             />
             <Input
               type="text"
               placeholder="Custom Label (e.g. Bedroom)"
               value={deviceName}
               onChange={(e) => setDeviceName(e.target.value)}
-              className="bg-slate-950 border-slate-800 text-xs h-8"
+              className="bg-card border-border text-xs h-8 text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-sky-500"
             />
             <div className="flex justify-end gap-2 pt-1">
               <Button
@@ -177,7 +179,7 @@ export default function OverviewPanel({ deviceContext, onSwitchTab }) {
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsPairing(false)}
-                className="h-7 text-xs text-slate-400 hover:text-white"
+                className="h-7 text-xs text-muted-foreground hover:text-foreground"
               >
                 Cancel
               </Button>
@@ -185,7 +187,7 @@ export default function OverviewPanel({ deviceContext, onSwitchTab }) {
                 type="submit"
                 size="sm"
                 disabled={loading}
-                className="h-7 text-xs bg-sky-600 hover:bg-sky-500 text-white cursor-pointer"
+                className="h-7 text-xs bg-sky-600 hover:bg-sky-500 text-white cursor-pointer shadow-2xs"
               >
                 {loading ? "Pairing..." : "Connect"}
               </Button>
@@ -202,27 +204,27 @@ export default function OverviewPanel({ deviceContext, onSwitchTab }) {
                 onClick={() => setSelectedDevice(d)}
                 className={`w-full flex items-center justify-between p-3 rounded-2xl border text-left transition-all cursor-pointer ${
                   isSelected
-                    ? "border-sky-500/50 bg-sky-500/10 shadow-sm"
-                    : "border-slate-800 bg-slate-950/40 hover:bg-slate-900"
+                    ? "border-sky-300 bg-sky-50/70 shadow-2xs"
+                    : "border-border bg-card hover:bg-muted/40"
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <Cpu
                     className={`w-4 h-4 ${
-                      isSelected ? "text-sky-400" : "text-slate-500"
+                      isSelected ? "text-sky-600" : "text-muted-foreground"
                     }`}
                   />
                   <div>
-                    <p className="text-xs font-bold text-white">
+                    <p className="text-xs font-bold text-foreground">
                       {d.name || d.id}
                     </p>
-                    <p className="text-[10px] text-slate-500 font-mono">{d.id}</p>
+                    <p className="text-[10px] text-muted-foreground font-mono">{d.id}</p>
                   </div>
                 </div>
                 {isSelected && (
                   <Badge
                     variant="outline"
-                    className="text-[10px] font-bold uppercase tracking-wider text-sky-400 bg-sky-950/60 border-sky-800/60"
+                    className="text-[10px] font-bold uppercase tracking-wider text-sky-700 bg-sky-100/70 border-sky-200"
                   >
                     Active
                   </Badge>

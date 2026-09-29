@@ -60,31 +60,31 @@ export default function SettingsPanel({ deviceContext, onClose }) {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-sm font-bold text-white">System Settings</h3>
-        <p className="text-xs text-slate-400">Account identity & alert parameters</p>
+        <h3 className="text-sm font-bold text-foreground">System Settings</h3>
+        <p className="text-xs text-muted-foreground">Account identity & alert parameters</p>
       </div>
 
       {statusMsg && (
-        <div className="flex items-center gap-2 p-3 text-xs text-emerald-400 bg-emerald-950/40 border border-emerald-900/60 rounded-xl">
-          <CheckCircle2 className="w-4 h-4 shrink-0" />
+        <div className="flex items-center gap-2 p-3 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl">
+          <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
           <span>{statusMsg}</span>
         </div>
       )}
 
       {errorMsg && (
-        <div className="flex items-center gap-2 p-3 text-xs text-rose-400 bg-rose-950/40 border border-rose-900/60 rounded-xl">
-          <AlertCircle className="w-4 h-4 shrink-0" />
+        <div className="flex items-center gap-2 p-3 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-xl">
+          <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
           <span>{errorMsg}</span>
         </div>
       )}
 
       <form onSubmit={handleProfileSave} className="space-y-4">
-        <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
           Profile Identity
         </span>
 
         <div>
-          <label className="block text-xs font-medium text-slate-300 mb-1.5">
+          <label className="block text-xs font-medium text-foreground mb-1.5">
             Display Name
           </label>
           <div className="relative">
@@ -92,14 +92,14 @@ export default function SettingsPanel({ deviceContext, onClose }) {
               type="text"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              className="bg-slate-950 border-slate-800 pl-10 text-sm"
+              className="bg-muted/30 border-border text-foreground pl-10 text-sm focus-visible:ring-sky-500"
             />
-            <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-3 pointer-events-none" />
+            <User className="w-4 h-4 text-muted-foreground absolute left-3.5 top-3 pointer-events-none" />
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-slate-300 mb-1.5">
+          <label className="block text-xs font-medium text-foreground mb-1.5">
             Account Email
           </label>
           <div className="relative">
@@ -108,40 +108,40 @@ export default function SettingsPanel({ deviceContext, onClose }) {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="bg-slate-950 border-slate-800 pl-10 text-sm"
+              className="bg-muted/30 border-border text-foreground pl-10 text-sm focus-visible:ring-sky-500"
             />
-            <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-3 pointer-events-none" />
+            <Mail className="w-4 h-4 text-muted-foreground absolute left-3.5 top-3 pointer-events-none" />
           </div>
         </div>
 
         <Button
           type="submit"
           disabled={saving}
-          className="w-full bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold gap-2 shadow-md cursor-pointer"
+          className="w-full bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold gap-2 shadow-2xs cursor-pointer transition-colors"
         >
           <Save className="w-3.5 h-3.5" />
           <span>{saving ? "Saving..." : "Save Preferences"}</span>
         </Button>
       </form>
 
-      <div className="pt-4 border-t border-slate-800/80 space-y-3">
-        <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">
+      <div className="pt-4 border-t border-border/80 space-y-3">
+        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
           Manage Device Linkages
         </span>
 
         {devices.length === 0 ? (
-          <p className="text-xs text-slate-500">No active nodes to manage.</p>
+          <p className="text-xs text-muted-foreground">No active nodes to manage.</p>
         ) : (
           devices.map((d) => (
             <div
               key={d.id}
-              className="flex items-center justify-between p-3 rounded-2xl border border-slate-800 bg-slate-950/60"
+              className="flex items-center justify-between p-3 rounded-2xl border border-border bg-card shadow-2xs"
             >
               <div className="flex items-center gap-2.5">
-                <Cpu className="w-4 h-4 text-slate-400" />
+                <Cpu className="w-4 h-4 text-muted-foreground" />
                 <div>
-                  <p className="text-xs font-bold text-white">{d.name || d.id}</p>
-                  <p className="text-[10px] text-slate-500 font-mono">ID: {d.id}</p>
+                  <p className="text-xs font-bold text-foreground">{d.name || d.id}</p>
+                  <p className="text-[10px] text-muted-foreground font-mono">ID: {d.id}</p>
                 </div>
               </div>
               <Button
@@ -149,7 +149,7 @@ export default function SettingsPanel({ deviceContext, onClose }) {
                 size="icon"
                 onClick={() => handleRelease(d.id)}
                 disabled={releasingId === d.id}
-                className="h-8 w-8 text-slate-400 hover:text-rose-400 hover:bg-rose-950/30 rounded-lg cursor-pointer"
+                className="h-8 w-8 text-muted-foreground hover:text-rose-600 hover:bg-rose-50 rounded-lg cursor-pointer"
                 title="Unlink Device"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -159,16 +159,16 @@ export default function SettingsPanel({ deviceContext, onClose }) {
         )}
       </div>
 
-      <div className="pt-4 border-t border-slate-800/80">
+      <div className="pt-4 border-t border-border/80">
         <Button
           variant="outline"
           onClick={() => {
             onClose();
             logout();
           }}
-          className="w-full border-rose-900/40 text-rose-400 hover:bg-rose-950/30 hover:text-rose-300 text-xs font-semibold gap-2 cursor-pointer"
+          className="w-full border-rose-200 text-rose-700 bg-rose-50/50 hover:bg-rose-50 hover:text-rose-800 text-xs font-semibold gap-2 cursor-pointer transition-colors"
         >
-          <LogOut className="w-3.5 h-3.5" />
+          <LogOut className="w-3.5 h-3.5 text-rose-600" />
           <span>Sign Out of Aera</span>
         </Button>
       </div>
