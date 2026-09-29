@@ -8,32 +8,29 @@
 #include <Preferences.h>
 
 // ============================================================================
-// DEFAULT CREDENTIALS & ENDPOINT
+// CLOUD GATEWAY & HARDWARE PROFILES
 // ============================================================================
-#define DEFAULT_WIFI_SSID     "JioFiber-xcxF6"
-#define DEFAULT_WIFI_PASS     "Dooth7Olae9Ooshe"
+#define AP_SSID                  "Aera-AQI"
+#define DNS_PORT                 53
 
-#define AP_SSID               "AERA-Setup"
-#define DNS_PORT              53
-
-#define AERA_HOST             "aera-cloud.hacksmiths.dev"
-#define AERA_PORT             443
-#define AERA_INGEST_ENDPOINT  "/v1/telemetry/ingest"
-#define AERA_DEVICE_ID        "ESP32-SOLO1-NODE01"
-#define AERA_API_KEY          "4d977bc73f3b74fa735b5e4d3503df5fe534a6064bd6fabb51919864b6ce47b4"
+#define AERA_HOST                "aera-cloud.hacksmiths.dev"
+#define AERA_PORT                443
+#define AERA_INGEST_ENDPOINT     "/v1/telemetry/ingest"
+#define AERA_DEVICE_ID           "ESP32-SOLO1-NODE01"
+#define AERA_API_KEY             "4d977bc73f3b74fa735b5e4d3503df5fe534a6064bd6fabb51919864b6ce47b4"
 
 // Pin Assignments
-#define PIN_DHT11             4
-#define PIN_MQ9_ANALOG        34
-#define PIN_STATUS_LED        2
-#define PIN_BUZZER            15
+#define PIN_DHT11                4
+#define PIN_MQ9_ANALOG           34
+#define PIN_STATUS_LED           2
+#define PIN_BUZZER               15
 
-#define MQ9_ADC_RESOLUTION    12
-#define MQ9_ALERT_PPM_LIMIT   350.0f
-
-#define TELEMETRY_INTERVAL_MS 5000
-#define WIFI_RETRY_INTERVAL_MS 10000
-#define SERIAL_BAUD_RATE      115200
+// Operational Parameters
+#define MQ9_ADC_RESOLUTION       12
+#define MQ9_ALERT_PPM_LIMIT      350.0f
+#define TELEMETRY_INTERVAL_MS    5000
+#define WIFI_RETRY_INTERVAL_MS   10000
+#define SERIAL_BAUD_RATE         115200
 
 enum SystemState {
   STATE_BOOTING,
@@ -45,45 +42,141 @@ enum SystemState {
 };
 
 // ============================================================================
-// PORTAL HTML TEMPLATE
+// CAPTIVE PORTAL INTERFACE (COOL-TONED SLATE PALETTE)
 // ============================================================================
 const char PORTAL_HTML[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AERA Node Setup</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Aera AQI Station Setup</title>
   <style>
-    * { box-sizing: border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 24px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-    .card { background: #1e293b; border: 1px solid #334155; padding: 24px; border-radius: 12px; width: 100%; max-width: 380px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-    h2 { margin: 0 0 8px 0; color: #38bdf8; font-size: 20px; font-weight: 600; }
-    p { margin: 0 0 20px 0; color: #94a3b8; font-size: 14px; }
-    label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; color: #cbd5e1; }
-    select, input { width: 100%; padding: 12px; margin-bottom: 16px; border-radius: 6px; border: 1px solid #475569; background: #0f172a; color: #f8fafc; font-size: 14px; outline: none; }
-    select:focus, input:focus { border-color: #38bdf8; }
-    button { width: 100%; padding: 12px; background: #0284c7; color: white; border: none; border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
-    button:hover { background: #0369a1; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #0f172a;
+      color: #f8fafc;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 20px;
+      padding: 28px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(2, 132, 199, 0.15);
+      border: 1px solid rgba(2, 132, 199, 0.4);
+      color: #38bdf8;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      margin-bottom: 16px;
+    }
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      background: #38bdf8;
+      border-radius: 50%;
+    }
+    h2 {
+      font-size: 22px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: -0.025em;
+      margin-bottom: 6px;
+    }
+    p {
+      color: #94a3b8;
+      font-size: 13px;
+      line-height: 1.5;
+      margin-bottom: 24px;
+    }
+    label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #cbd5e1;
+      margin-bottom: 6px;
+    }
+    select, input[type="password"] {
+      width: 100%;
+      padding: 12px 14px;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      color: #f8fafc;
+      font-size: 14px;
+      margin-bottom: 18px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    select:focus, input[type="password"]:focus {
+      border-color: #0284c7;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #0284c7;
+      color: #ffffff;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+      transition: background 0.2s, transform 0.1s;
+    }
+    button:active {
+      transform: scale(0.98);
+      background: #0369a1;
+    }
+    .footer-note {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 11px;
+      color: #64748b;
+    }
   </style>
 </head>
 <body>
   <div class="card">
-    <h2>AERA AQI Node</h2>
-    <p>Select a 2.4 GHz Wi-Fi network for cloud ingestion.</p>
+    <div class="badge">
+      <span class="badge-dot"></span> Telemetry Station
+    </div>
+    <h2>Pair Node to Wi-Fi</h2>
+    <p>Select your local 2.4 GHz network to link this atmospheric telemetry node to your Aera Cloud workspace.</p>
     <form action="/save" method="POST">
-      <label for="ssid">Available Networks</label>
+      <label for="ssid">Available Access Points</label>
       <select name="ssid" id="ssid">{{NETWORKS}}</select>
-      <label for="pass">Password</label>
-      <input type="password" name="password" id="pass" placeholder="Network password" required>
-      <button type="submit">Save & Connect</button>
+      <label for="pass">Security Passphrase</label>
+      <input type="password" name="password" id="pass" placeholder="••••••••" required>
+      <button type="submit">Establish Uplink</button>
     </form>
+    <div class="footer-note">Node ID: ESP32-SOLO1-NODE01</div>
   </div>
 </body>
 </html>
 )rawliteral";
 
 // ============================================================================
-// GLOBALS
+// SYSTEM STATE & GLOBAL INSTANCES
 // ============================================================================
 static DHT dhtSensor(PIN_DHT11, DHT11);
 static WebServer server(80);
@@ -102,7 +195,7 @@ static bool blinkToggle = false;
 static bool isPulsing = false;
 
 // ============================================================================
-// HARDWARE / STATUS HELPERS
+// PERIPHERAL DRIVERS & SIGNALING
 // ============================================================================
 static void setSystemState(SystemState newState) {
   if (currentState == newState) return;
@@ -135,14 +228,15 @@ static void pulseLed() {
 static void updateStatusIndicators() {
   unsigned long now = millis();
 
+  // Reset short visual pulse after telemetry dispatch
   if (isPulsing && now >= pulseEndTime) {
     isPulsing = false;
     digitalWrite(PIN_STATUS_LED, (currentState == STATE_ONLINE) ? HIGH : LOW);
   }
 
-  // Fast blink during portal setup or connection attempts
+  // Handle temporal patterns across operational states
   if (currentState == STATE_WIFI_CONNECTING || currentState == STATE_PORTAL_ACTIVE) {
-    uint16_t interval = (currentState == STATE_PORTAL_ACTIVE) ? 600 : 250;
+    uint16_t interval = (currentState == STATE_PORTAL_ACTIVE) ? 500 : 200;
     if (now - lastBlinkTime >= interval) {
       lastBlinkTime = now;
       blinkToggle = !blinkToggle;
@@ -159,7 +253,7 @@ static void updateStatusIndicators() {
 }
 
 // ============================================================================
-// SENSORS
+// SENSOR ACQUISITION PROTOCOLS
 // ============================================================================
 static float readMQ9Ppm() {
   uint32_t rawSum = 0;
@@ -170,17 +264,20 @@ static float readMQ9Ppm() {
   float rawAdc = (float)rawSum / 8.0f;
   float voltage = (rawAdc / 4095.0f) * 3.3f;
   float ratio = voltage / 3.3f;
+  
+  // Heuristic scaling approximation for Carbon Monoxide / Flammable Gas PPM
   return 10.0f + (ratio * 990.0f);
 }
 
 // ============================================================================
-// CAPTIVE PORTAL ROUTINES
+// CAPTIVE PORTAL ROUTINES & DNS INTERCEPTION
 // ============================================================================
 static void handlePortalRoot() {
+  Serial.println("[AERA-AP] Captive portal probe received. Scanning 2.4 GHz RF landscape...");
   int n = WiFi.scanNetworks();
   String options = "";
   if (n <= 0) {
-    options = "<option value=''>No networks found</option>";
+    options = "<option value=''>No networks detected</option>";
   } else {
     for (int i = 0; i < n; ++i) {
       options += "<option value='" + WiFi.SSID(i) + "'>" + WiFi.SSID(i) + " (" + String(WiFi.RSSI(i)) + " dBm)</option>";
@@ -197,63 +294,83 @@ static void handlePortalSave() {
     String newSSID = server.arg("ssid");
     String newPass = server.arg("password");
 
+    Serial.printf("[AERA-AP] Committing new Wi-Fi credentials to NVS: %s\n", newSSID.c_str());
+
     prefs.begin("aera-net", false);
     prefs.putString("ssid", newSSID);
     prefs.putString("pass", newPass);
     prefs.end();
 
     server.send(200, "text/html", 
-      "<html><body style='background:#0f172a;color:#f8fafc;font-family:sans-serif;text-align:center;padding:50px;'>"
-      "<h2>Credentials Saved</h2><p>Rebooting and connecting to " + newSSID + "...</p></body></html>");
+      "<!DOCTYPE html><html><body style='background:#0f172a;color:#f8fafc;font-family:-apple-system,sans-serif;text-align:center;padding:50px;'>"
+      "<h2 style='color:#38bdf8;margin-bottom:12px;'>Node Paired Successfully</h2>"
+      "<p style='color:#94a3b8;font-size:14px;'>Restarting station radio and connecting to " + newSSID + "...</p>"
+      "</body></html>");
 
     delay(2000);
     ESP.restart();
   } else {
-    server.send(400, "text/plain", "Missing Parameters");
+    server.send(400, "text/plain", "Missing Parameters: Form requires both SSID and password.");
   }
 }
 
 static void startCaptivePortal() {
-  Serial.println("[AERA] Starting Captive Portal SoftAP: AERA-Setup");
+  Serial.println("\n========================================================");
+  Serial.println("[AERA] Launching Access Point: " AP_SSID);
+  Serial.println("========================================================");
+
   WiFi.disconnect(true);
   delay(100);
 
-  WiFi.mode(WIFI_AP);
-  WiFi.softAP(AP_SSID);
+  // Set dual AP/Station mode so scanning runs reliably alongside AP broadcasting
+  WiFi.mode(WIFI_AP_STA);
+  bool apSuccess = WiFi.softAP(AP_SSID);
 
-  IPAddress apIP(192, 168, 4, 1);
-  WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
+  if (apSuccess) {
+    IPAddress apIP(192, 168, 4, 1);
+    WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
 
-  dnsServer.start(DNS_PORT, "*", apIP);
+    // Wildcard DNS redirect to force captive detection across iOS, Android, macOS, and Windows
+    dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
+    dnsServer.start(DNS_PORT, "*", apIP);
 
-  server.on("/", HTTP_GET, handlePortalRoot);
-  server.on("/save", HTTP_POST, handlePortalSave);
+    server.on("/", HTTP_GET, handlePortalRoot);
+    server.on("/save", HTTP_POST, handlePortalSave);
 
-  // Common OS captive portal detect endpoints
-  server.on("/generate_204", HTTP_GET, handlePortalRoot);
-  server.on("/hotspot-detect.html", HTTP_GET, handlePortalRoot);
-  server.onNotFound([]() {
-    server.sendHeader("Location", "http://192.168.4.1/", true);
-    server.send(302, "text/plain", "");
-  });
+    // Modern OS captive network test routes
+    server.on("/generate_204", HTTP_GET, handlePortalRoot);
+    server.on("/gen_204", HTTP_GET, handlePortalRoot);
+    server.on("/hotspot-detect.html", HTTP_GET, handlePortalRoot);
+    server.on("/ncsi.txt", HTTP_GET, handlePortalRoot);
 
-  server.begin();
-  setSystemState(STATE_PORTAL_ACTIVE);
-  Serial.printf("[AERA] Portal server active on IP: %s\n", apIP.toString().c_str());
+    server.onNotFound([]() {
+      server.sendHeader("Location", "http://192.168.4.1/", true);
+      server.send(302, "text/plain", "");
+    });
+
+    server.begin();
+    setSystemState(STATE_PORTAL_ACTIVE);
+    Serial.printf("[AERA] Station broadcast active! SSID: %s | Gateway: http://192.168.4.1\n", AP_SSID);
+  } else {
+    Serial.println("[ERROR] Failed to start SoftAP radio layer.");
+    setSystemState(STATE_ERROR);
+  }
 }
 
 // ============================================================================
-// WIFI CLIENT & TELEMETRY POST
+// UPLINK NETWORKING & TELEMETRY INGEST
 // ============================================================================
 static bool connectWiFi(const String& ssid, const String& pass) {
+  if (ssid.length() == 0) return false;
+
   WiFi.disconnect(true);
   delay(100);
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid.c_str(), pass.c_str());
 
-  Serial.printf("[AERA] Connecting to %s", ssid.c_str());
+  Serial.printf("[AERA] Associating with network: %s", ssid.c_str());
   uint8_t attempts = 0;
-  while (WiFi.status() != WL_CONNECTED && attempts < 25) { // 10 seconds timeout
+  while (WiFi.status() != WL_CONNECTED && attempts < 25) { // 10s timeout
     delay(400);
     Serial.print(".");
     attempts++;
@@ -264,13 +381,14 @@ static bool connectWiFi(const String& ssid, const String& pass) {
 
 static bool postTelemetry(float temp, float hum, float co) {
   WiFiClientSecure client;
-  client.setInsecure();
+  client.setInsecure(); // Permits self-signed or development cloud cert validation
 
   HTTPClient https;
-  char url[128];
+  char url[160];
   snprintf(url, sizeof(url), "https://%s:%u%s", AERA_HOST, AERA_PORT, AERA_INGEST_ENDPOINT);
 
   if (!https.begin(client, url)) {
+    Serial.println("[HTTP] TLS handshake instantiation failed.");
     return false;
   }
 
@@ -290,7 +408,9 @@ static bool postTelemetry(float temp, float hum, float co) {
   bool success = (httpCode >= 200 && httpCode < 300);
 
   if (!success) {
-    Serial.printf("[HTTP] POST failed, error code: %d\n", httpCode);
+    Serial.printf("[HTTP] POST rejected. Code: %d\n", httpCode);
+  } else {
+    Serial.printf("[HTTP] Ingest 200 OK: %s\n", jsonBody);
   }
 
   https.end();
@@ -298,7 +418,7 @@ static bool postTelemetry(float temp, float hum, float co) {
 }
 
 // ============================================================================
-// MAIN SETUP & LOOP
+// MAIN SETUP & EXECUTION PIPELINE
 // ============================================================================
 void setup() {
   Serial.begin(SERIAL_BAUD_RATE);
@@ -311,30 +431,41 @@ void setup() {
   setSystemState(STATE_BOOTING);
   dhtSensor.begin();
 
-  Serial.println("\n[AERA] Booting ESP32-Solo1 Telemetry Station...");
+  Serial.println("\n--------------------------------------------------------");
+  Serial.println(" Aera Environmental Labs - Atmospheric Sensor Node");
+  Serial.println(" Target Architecture: ESP32-Solo1 Telemetry Station");
+  Serial.println("--------------------------------------------------------");
 
-  // Load Wi-Fi from NVS or use defaults
+  // Read non-volatile storage for operator credentials (no hardcoded credentials)
   prefs.begin("aera-net", true);
-  activeSSID = prefs.getString("ssid", DEFAULT_WIFI_SSID);
-  activePass = prefs.getString("pass", DEFAULT_WIFI_PASS);
+  activeSSID = prefs.getString("ssid", "");
+  activePass = prefs.getString("pass", "");
   prefs.end();
 
-  setSystemState(STATE_WIFI_CONNECTING);
+  if (activeSSID.length() > 0) {
+    Serial.printf("[AERA] Stored network profile located: %s\n", activeSSID.c_str());
+    setSystemState(STATE_WIFI_CONNECTING);
 
-  if (connectWiFi(activeSSID, activePass)) {
-    Serial.println("[AERA] Wi-Fi link established.");
-    setSystemState(STATE_ONLINE);
-    triggerBeep(120);
+    if (connectWiFi(activeSSID, activePass)) {
+      Serial.println("[AERA] Station successfully associated with local router.");
+      Serial.printf("[AERA] IP Assigned: %s\n", WiFi.localIP().toString().c_str());
+      setSystemState(STATE_ONLINE);
+      triggerBeep(120);
+      return;
+    }
+    Serial.println("[AERA] Connection failed. Escalating to provisioning mode.");
   } else {
-    Serial.println("[AERA] Wi-Fi association failed. Launching Captive Portal...");
-    startCaptivePortal();
+    Serial.println("[AERA] No previous network configured.");
   }
+
+  // Launch the captive configuration portal when unconfigured or connection drops
+  startCaptivePortal();
 }
 
 void loop() {
   updateStatusIndicators();
 
-  // If captive portal is up, process DNS and HTTP requests
+  // Route requests while captive portal is active
   if (currentState == STATE_PORTAL_ACTIVE) {
     dnsServer.processNextRequest();
     server.handleClient();
@@ -343,19 +474,19 @@ void loop() {
 
   unsigned long now = millis();
 
-  // Background Wi-Fi recovery
+  // Background Wi-Fi self-healing and recovery
   if (WiFi.status() != WL_CONNECTED && (now - lastWifiRetry >= WIFI_RETRY_INTERVAL_MS)) {
     lastWifiRetry = now;
-    Serial.println("[AERA] Wi-Fi disconnected. Reconnecting...");
+    Serial.println("[AERA] Wi-Fi drop detected. Attempting telemetry recovery...");
     if (connectWiFi(activeSSID, activePass)) {
-      Serial.println("[AERA] Wi-Fi re-established.");
+      Serial.println("[AERA] Wi-Fi link re-established.");
       setSystemState(STATE_ONLINE);
     } else {
       setSystemState(STATE_ERROR);
     }
   }
 
-  // Telemetry loop
+  // Periodic Telemetry Dispatch
   if (now - lastTransmit >= TELEMETRY_INTERVAL_MS) {
     lastTransmit = now;
 
@@ -365,26 +496,28 @@ void loop() {
     if (isnan(temperature) || isnan(humidity)) {
       temperature = 0.0f;
       humidity = 0.0f;
-      Serial.println("[WARN] DHT11 read timeout. Check pin 4 wiring.");
+      Serial.println("[WARN] DHT11 sensor read fault. Check data pin 4 pullup.");
     }
 
     float co_ppm = readMQ9Ppm();
 
-    Serial.printf("[TELEMETRY] Temp: %.1f °C | Humidity: %.1f %% | CO: %.2f PPM\n",
+    Serial.printf("[TELEMETRY] Ambient Temp: %.1f C | Humidity: %.1f %% | CO Conc: %.2f PPM\n",
                   temperature, humidity, co_ppm);
 
+    // Evaluate Safety Thresholds
     if (co_ppm >= MQ9_ALERT_PPM_LIMIT) {
       setSystemState(STATE_ALERT);
     } else if (WiFi.status() == WL_CONNECTED) {
       setSystemState(STATE_ONLINE);
     }
 
+    // Dispatch secure telemetry packet
     if (WiFi.status() == WL_CONNECTED) {
-      bool ok = postTelemetry(temperature, humidity, co_ppm);
-      if (ok) {
+      bool dispatched = postTelemetry(temperature, humidity, co_ppm);
+      if (dispatched) {
         pulseLed();
       } else {
-        Serial.println("[WARN] Ingest endpoint returned non-2xx status.");
+        Serial.println("[WARN] Telemetry pipeline rejected packet.");
       }
     }
   }
