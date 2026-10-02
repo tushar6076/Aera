@@ -1,194 +1,199 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  /* Cool-Toned Base Palette */
-  --text: #475569;
-  --text-h: #0f172a;
-  --bg: #f8fafc;
-  --border: #e2e8f0;
-  --code-bg: #f1f5f9;
-
-  /* Cool Accents */
-  --accent: #0284c7;
-  --accent-bg: rgba(2, 132, 199, 0.08);
-  --accent-border: rgba(2, 132, 199, 0.25);
-  --social-bg: rgba(241, 245, 249, 0.8);
-  --shadow:
-    rgba(15, 23, 42, 0.05) 0 10px 15px -3px,
-    rgba(15, 23, 42, 0.02) 0 4px 6px -2px;
-
-  --sans: 'Geist Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --heading: 'Geist Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-
-  font: 16px/150% var(--sans);
-  letter-spacing: -0.011em;
-  color-scheme: light;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-
-  @media (max-width: 1024px) {
-    font-size: 15px;
-  }
-}
-
-body {
-  margin: 0;
-  min-height: 100vh;
-  background-color: var(--bg);
-  color: var(--text);
-}
-
-#root {
-  width: 100%;
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-}
-
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  font-family: var(--heading);
-  font-weight: 600;
-  color: var(--text-h);
-  letter-spacing: -0.02em;
-}
-
-p {
-  margin: 0;
-}
-
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
-
-code {
-  font-size: 13px;
-  line-height: 140%;
-  padding: 2px 6px;
-  background: var(--code-bg);
-}
-
-#social .button-icon {
-  filter: none;
-}
-
 @layer base {
-  .theme {
-    --font-heading: 'Geist Variable', sans-serif;
-    --font-sans: 'Geist Variable', sans-serif;
-  }
-
   :root {
-    /* Pure clean light theme in OKLCH */
-    --background: oklch(0.985 0.005 240);       /* Ice Canvas (#f8fafc) */
-    --foreground: oklch(0.205 0.02 260);       /* Deep Slate Text */
+    /* Base Font Stacks */
+    --font-sans: 'Geist Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-heading: 'Geist Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-    --card: oklch(1 0 0);                      /* Pure White Surface */
-    --card-foreground: oklch(0.205 0.02 260);
+    /* Light Canvas: Cool Ice Slate */
+    --background: #f8fafc;
+    --foreground: #0f172a;
 
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.205 0.02 260);
+    /* Elevated Surfaces: Clean White with Subtle Ambient Tint */
+    --card: #ffffff;
+    --card-foreground: #0f172a;
+    --card-muted: #f1f5f9;
 
-    /* Primary Accent: Sky/Cyan */
-    --primary: oklch(0.58 0.16 230);           /* Sky 600 */
-    --primary-foreground: oklch(0.99 0 0);
+    --popover: #ffffff;
+    --popover-foreground: #0f172a;
 
-    /* Secondary: Indigo / Soft cool tint */
-    --secondary: oklch(0.96 0.015 250);
-    --secondary-foreground: oklch(0.38 0.15 264);
+    /* Subtle Atmospheric Sky */
+    --primary: #0284c7;                  /* Sky 600 */
+    --primary-foreground: #ffffff;
+    --primary-light: #e0f2fe;            /* Sky 100 */
 
-    --muted: oklch(0.96 0.008 240);            /* Slate 100 */
-    --muted-foreground: oklch(0.52 0.02 250);  /* Slate 500 */
+    /* Secondary Telemetry */
+    --secondary: #f1f5f9;
+    --secondary-foreground: #4f46e5;
 
-    --accent: oklch(0.95 0.025 230);           /* Soft Sky Tint */
-    --accent-foreground: oklch(0.35 0.14 230);
+    --muted: #f1f5f9;
+    --muted-foreground: #64748b;
 
-    --destructive: oklch(0.62 0.22 25);        /* Rose Alert */
-    --destructive-foreground: oklch(0.99 0 0);
+    /* Soft Icon Badges & Pills */
+    --accent: #f0f9ff;                  /* Sky 50 */
+    --accent-foreground: #0284c7;
 
-    --border: oklch(0.91 0.01 240);            /* Slate 200 */
-    --input: oklch(0.91 0.01 240);
-    --ring: oklch(0.65 0.15 230);
+    --destructive: #e11d48;
+    --destructive-foreground: #ffffff;
+
+    --border: #e2e8f0;
+    --border-strong: #cbd5e1;
+    --input: #e2e8f0;
+    --ring: #38bdf8;
 
     /* Telemetry Spectrum */
-    --chart-1: oklch(0.58 0.16 230);           /* Sky (AQI) */
-    --chart-2: oklch(0.52 0.20 264);           /* Indigo (PM2.5) */
-    --chart-3: oklch(0.62 0.15 170);           /* Teal (Dispersion/Wind) */
-    --chart-4: oklch(0.72 0.18 65);            /* Amber (Caution) */
-    --chart-5: oklch(0.62 0.22 25);            /* Rose (Hazard) */
+    --chart-1: #0284c7;                 /* Sky (AQI) */
+    --chart-2: #6366f1;                 /* Indigo (PM2.5) */
+    --chart-3: #0d9488;                 /* Teal (Circulation) */
+    --chart-4: #d97706;                 /* Amber (Moderate) */
+    --chart-5: #e11d48;                 /* Rose (Hazard) */
 
-    --radius: 0.875rem;
+    --radius: 1rem;
 
-    --sidebar: oklch(1 0 0);
-    --sidebar-foreground: oklch(0.205 0.02 260);
-    --sidebar-primary: oklch(0.58 0.16 230);
-    --sidebar-primary-foreground: oklch(0.99 0 0);
-    --sidebar-accent: oklch(0.96 0.02 230);
-    --sidebar-accent-foreground: oklch(0.205 0.02 260);
-    --sidebar-border: oklch(0.91 0.01 240);
-    --sidebar-ring: oklch(0.65 0.15 230);
+    --sidebar: #ffffff;
+    --sidebar-foreground: #0f172a;
+    --sidebar-primary: #0284c7;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #f0f9ff;
+    --sidebar-accent-foreground: #0284c7;
+    --sidebar-border: #e2e8f0;
+    --sidebar-ring: #38bdf8;
   }
 
   .dark {
-    --background: oklch(0.145 0.02 260);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.18 0.02 260);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.18 0.02 260);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.65 0.16 230);
-    --primary-foreground: oklch(0.145 0.02 260);
-    --secondary: oklch(0.24 0.03 260);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.24 0.02 260);
-    --muted-foreground: oklch(0.708 0.01 250);
-    --accent: oklch(0.24 0.03 260);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 12%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.65 0.15 230);
-    --chart-1: oklch(0.65 0.16 230);
-    --chart-2: oklch(0.60 0.18 264);
-    --chart-3: oklch(0.68 0.15 170);
-    --chart-4: oklch(0.75 0.18 65);
-    --chart-5: oklch(0.70 0.22 25);
-    --sidebar: oklch(0.16 0.02 260);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.65 0.16 230);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.24 0.03 260);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 12%);
-    --sidebar-ring: oklch(0.65 0.15 230);
+    --background: #090d16;
+    --foreground: #f8fafc;
+
+    --card: #0f172a;
+    --card-foreground: #f8fafc;
+    --card-muted: #1e293b;
+
+    --popover: #0f172a;
+    --popover-foreground: #f8fafc;
+
+    --primary: #38bdf8;                 /* Sky 400 */
+    --primary-foreground: #090d16;
+    --primary-light: #082f49;
+
+    --secondary: #1e293b;
+    --secondary-foreground: #818cf8;
+
+    --muted: #1e293b;
+    --muted-foreground: #94a3b8;
+
+    --accent: #082f49;
+    --accent-foreground: #38bdf8;
+
+    --destructive: #f43f5e;
+    --destructive-foreground: #ffffff;
+
+    --border: #1e293b;
+    --border-strong: #334155;
+    --input: #1e293b;
+    --ring: #38bdf8;
+
+    --chart-1: #38bdf8;
+    --chart-2: #818cf8;
+    --chart-3: #2dd4bf;
+    --chart-4: #fbbf24;
+    --chart-5: #f43f5e;
+
+    --sidebar: #0f172a;
+    --sidebar-foreground: #f8fafc;
+    --sidebar-primary: #38bdf8;
+    --sidebar-primary-foreground: #090d16;
+    --sidebar-accent: #082f49;
+    --sidebar-accent-foreground: #38bdf8;
+    --sidebar-border: #1e293b;
+    --sidebar-ring: #38bdf8;
   }
 
   * {
     @apply border-border outline-ring/50;
+    box-sizing: border-box;
   }
-  body {
-    @apply bg-background text-foreground antialiased;
-  }
+
   html {
-    @apply font-sans;
+    font-family: var(--font-sans);
+    letter-spacing: -0.011em;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    background-color: var(--background);
   }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    min-height: 100vh;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  #root {
+    width: 100%;
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--background);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+    letter-spacing: -0.02em;
+    font-weight: 700;
+  }
+
+  code, pre, .font-mono {
+    font-family: var(--font-mono);
+  }
+
+  /* 
+    Subtle Translucent Shell on All Modals, Sheets, and Popovers:
+    Uses color-mix with 95% surface opacity and subtle backdrop blur.
+    Prevents wash-out while keeping the modern layered aesthetic.
+  */
+  [data-radix-portal] > div[data-state],
+  [data-slot="dialog-content"],
+  [data-slot="sheet-content"],
+  [data-slot="popover-content"],
+  div[role="dialog"],
+  aside[role="dialog"],
+  div[role="menu"] {
+    background-color: color-mix(in srgb, var(--card) 95%, transparent) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+  }
+
+  /* Backdrop Overlay using semantic foreground token */
+  [data-slot="dialog-overlay"],
+  [data-slot="sheet-overlay"],
+  div[data-state="open"].fixed.inset-0 {
+    background-color: color-mix(in srgb, var(--foreground) 45%, transparent) !important;
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+  }
+}
+
+/* Dynamic Semantic Scrollbars (Supports both Light and Dark mode seamlessly) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: color-mix(in srgb, var(--background) 70%, transparent);
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--muted-foreground) 30%, transparent);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
 }

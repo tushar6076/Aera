@@ -1,7 +1,8 @@
-import React, { useState, useEffect, createContext, useContext } from "react";
+// aera-app/src/hooks/useAuth.jsx
+import React, { useState, useEffect, createContext, useContext, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { authService } from "../services/auth";
-import api from "../services/api";
+import { userService } from "../services/user";
 
 const AuthContext = createContext(null);
 
@@ -9,30 +10,40 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function restoreSession() {
-      try {
-        const token = await AsyncStorage.getItem("aera_token");
-        if (token) {
-          const res = await api.get("/v1/user/me");
-          setUser(res.data);
-        }
-      } catch (err) {
-        await AsyncStorage.removeItem("aera_token");
+  const refreshProfile = useCallback(async () => {
+    try {
+      const token = await AsyncStorage.getItem("aera_token");
+      if (!token) {
         setUser(null);
-      } finally {
         setLoading(false);
+        return null;
       }
+      const profile = await userService.getProfile();
+      setUser(profile);
+      return profile;
+    } catch (err) {
+      await AsyncStorage.removeItem("aera_token");
+      setUser(null);
+      return null;
+    } finally {
+      setLoading(false);
     }
-    restoreSession();
   }, []);
+
+  useEffect(() => {
+    refreshProfile();
+  }, [refreshProfile]);
 
   const login = async (credentials) => {
     const data = await authService.login(credentials);
     await AsyncStorage.setItem("aera_token", data.access_token);
-    const res = await api.get("/v1/user/me");
-    setUser(res.data);
-    return res.data;
+    return await refreshProfile();
+  };
+
+  const register = async (registrationData) => {
+    const data = await authService.register(registrationData);
+    await AsyncStorage.setItem("aera_token", data.access_token);
+    return await refreshProfile();
   };
 
   const logout = async () => {
@@ -41,10 +52,21 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, loading, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        setUser,
+        loading,
+        login,
+        register,
+        logout,
+        refreshProfile,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 }
 
 export const useAuth = () => useContext(AuthContext);
+export default useAuth;

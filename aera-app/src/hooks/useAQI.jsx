@@ -1,5 +1,5 @@
+// aera-app/src/hooks/useAQI.jsx
 import { useState, useEffect, useRef } from "react";
-import { WS_BASE_URL } from "../services/api";
 import { monitoringService } from "../services/monitoring";
 
 export function useAQI(deviceId) {
@@ -13,7 +13,7 @@ export function useAQI(deviceId) {
   const [isHardwareActive, setIsHardwareActive] = useState(false);
   const wsRef = useRef(null);
 
-  // 1. Primary Data Pipeline (Ambient Fallback vs Hardware Mode)
+  // 1. Primary Telemetry Pipeline (Ambient Regional vs. Hardware Node)
   useEffect(() => {
     let isMounted = true;
 
@@ -41,7 +41,7 @@ export function useAQI(deviceId) {
         };
         setCurrentReading(baseline);
 
-        // Fetch Groq dynamic guidance
+        // Fetch dynamic health advisory from Groq
         const rec = await monitoringService.getAmbientRecommendation({
           latitude: lat,
           longitude: lon,
@@ -64,7 +64,7 @@ export function useAQI(deviceId) {
           }));
         }
       } catch (err) {
-        console.warn("Ambient pipeline exception:", err);
+        console.warn("Mobile ambient pipeline exception:", err);
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -75,21 +75,25 @@ export function useAQI(deviceId) {
         setLoading(true);
         setIsHardwareActive(true);
 
-        const [latest, hist, rec] = await Promise.allSettled([
+        const [latestResult, histResult, recResult] = await Promise.allSettled([
           monitoringService.getLatest(id),
-          monitoringService.getHistory(id, 30),
+          monitoringService.getHistory(id, 50),
           monitoringService.getDeviceRecommendation(id),
         ]);
 
         if (!isMounted) return;
 
-        if (latest.status === "fulfilled") setCurrentReading(latest.value);
-        if (hist.status === "fulfilled") setHistory(hist.value);
-        if (rec.status === "fulfilled") {
-          setRecommendation(rec.value.data || rec.value.recommendation);
+        if (latestResult.status === "fulfilled" && latestResult.value) {
+          setCurrentReading(latestResult.value);
+        }
+        if (histResult.status === "fulfilled" && histResult.value) {
+          setHistory(histResult.value);
+        }
+        if (recResult.status === "fulfilled" && recResult.value) {
+          setRecommendation(recResult.value.data || recResult.value.recommendation);
         }
       } catch (err) {
-        console.warn("Hardware fetch exception:", err);
+        console.warn("Mobile hardware fetch exception:", err);
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -98,15 +102,8 @@ export function useAQI(deviceId) {
     if (deviceId) {
       loadHardwareData(deviceId);
     } else {
-      // Direct load with default coordinates (or integrate navigator.geolocation if permission setup is complete)
-      if (typeof navigator !== "undefined" && navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => loadAmbientData(pos.coords.latitude, pos.coords.longitude),
-          () => loadAmbientData()
-        );
-      } else {
-        loadAmbientData();
-      }
+      // In native environments, pass fallback coordinates or wire navigator.geolocation
+      loadAmbientData();
     }
 
     return () => {
@@ -122,7 +119,7 @@ export function useAQI(deviceId) {
     }
 
     let retryTimeout = null;
-    const wsUrl = `${WS_BASE_URL}/api/v1/monitoring/ws/live/${deviceId}`;
+    const wsUrl = monitoringService.getLiveStreamUrl(deviceId);
 
     function startSocket() {
       const ws = new WebSocket(wsUrl);
@@ -134,15 +131,15 @@ export function useAQI(deviceId) {
         try {
           const telemetry = JSON.parse(event.data);
           setCurrentReading(telemetry);
-          setHistory((prev) => [...prev.slice(-29), telemetry]);
+          setHistory((prev) => [...prev.slice(-49), telemetry]);
         } catch (e) {
-          console.warn("Failed to parse telemetry event:", e);
+          console.warn("Failed to parse telemetry packet:", e);
         }
       };
 
       ws.onclose = () => {
         setConnected(false);
-        retryTimeout = setTimeout(startSocket, 4000);
+        retryTimeout = setTimeout(startSocket, 3500);
       };
 
       ws.onerror = () => ws.close();
@@ -167,3 +164,5 @@ export function useAQI(deviceId) {
     isHardwareActive,
   };
 }
+
+export default useAQI;

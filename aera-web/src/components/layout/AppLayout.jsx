@@ -1,3 +1,4 @@
+// aera-web/src/components/layout/AppLayout.jsx
 import React, { useState } from "react";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
@@ -17,7 +18,7 @@ export default function AppLayout({ children, isConnected = true, deviceContext 
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col text-foreground antialiased selection:bg-sky-500/15 selection:text-sky-700">
+    <div className="min-h-screen bg-background flex flex-col text-foreground antialiased selection:bg-primary/15 selection:text-primary">
       <Navbar
         isConnected={isConnected}
         onOpenPanel={handleOpenPanel}

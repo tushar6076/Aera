@@ -1,40 +1,41 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from "react-native";
+// aera-app/src/screens/DashboardScreen.jsx
+import React, { useState } from "react";
+import { View, StyleSheet, TouchableOpacity } from "react-native";
 import { useAuth } from "../hooks/useAuth";
+import { useDevice } from "../hooks/useDevice";
 import { useAQI } from "../hooks/useAQI";
-import { monitoringService } from "../services/monitoring";
-import { colors, typography, shadows } from "../styles/theme";
+import { colors, shadows } from "../styles/theme";
 
 import ScreenLayout from "../components/layout/ScreenLayout";
 import AppNavbar from "../components/layout/AppNavbar";
 
 import AQICard from "../components/dashboard/AQICard";
+import AQIChart from "../components/dashboard/AQIChart";
 import PollutantCard from "../components/dashboard/PollutantCard";
+import OutdoorStatus from "../components/dashboard/OutdoorStatus";
 import RecommendationCard from "../components/dashboard/RecommendationCard";
-import { Cpu, Compass } from "lucide-react-native";
+import DeviceSelector from "../components/dashboard/DeviceSelector";
+import ClaimDeviceModal from "../components/dashboard/ClaimDeviceModal";
+import { Sparkles } from "lucide-react-native";
 
-export default function DashboardScreen() {
+export default function DashboardScreen({ navigation }) {
   const { user } = useAuth();
-  const [devices, setDevices] = useState([]);
-  const [selectedDevice, setSelectedDevice] = useState(null); // null = Ambient Mode
+  const {
+    devices,
+    selectedDevice,
+    setSelectedDevice,
+    deviceLiveState,
+    refreshDevices,
+  } = useDevice();
+
   const [refreshing, setRefreshing] = useState(false);
-
-  const fetchDevices = async () => {
-    try {
-      const list = await monitoringService.getDevices();
-      setDevices(list || []);
-    } catch (e) {
-      console.warn("Failed to fetch node list:", e);
-    }
-  };
-
-  useEffect(() => {
-    fetchDevices();
-  }, []);
+  const [claimModalVisible, setClaimModalVisible] = useState(false);
 
   const {
     cityName,
+    weatherMetrics,
     currentReading,
+    history,
     recommendation,
     connected,
     loading,
@@ -43,8 +44,16 @@ export default function DashboardScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchDevices();
+    await refreshDevices();
     setRefreshing(false);
+  };
+
+  const handleOpenAi = () => {
+    navigation.navigate("AiChat", {
+      activeDeviceId: selectedDevice?.id,
+      activeDeviceName: selectedDevice ? selectedDevice.name : "Ambient Grid",
+      currentReading,
+    });
   };
 
   return (
@@ -60,64 +69,17 @@ export default function DashboardScreen() {
         onRefresh={onRefresh}
         contentContainerStyle={styles.contentContainer}
       >
-        {/* Node & Ambient Mode Switcher */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.deviceList}
-          contentContainerStyle={styles.deviceListContent}
-        >
-          {/* Ambient Mode Pill */}
-          <TouchableOpacity
-            style={[
-              styles.devicePill,
-              selectedDevice === null && styles.devicePillActive,
-            ]}
-            onPress={() => setSelectedDevice(null)}
-            activeOpacity={0.8}
-          >
-            <Compass
-              size={13}
-              color={selectedDevice === null ? colors.primary : colors.textDim}
-            />
-            <Text
-              style={[
-                styles.deviceText,
-                selectedDevice === null && styles.deviceTextActive,
-              ]}
-            >
-              Ambient ({cityName || "Regional"})
-            </Text>
-          </TouchableOpacity>
+        {/* Device Selection Strip & Pair Action */}
+        <DeviceSelector
+          devices={devices}
+          selectedDevice={selectedDevice}
+          onSelectDevice={setSelectedDevice}
+          onOpenPairModal={() => setClaimModalVisible(true)}
+          locationName={cityName}
+          isOnline={deviceLiveState?.is_online}
+        />
 
-          {/* Claimed Hardware Node Pills */}
-          {devices.map((d) => {
-            const active = selectedDevice?.id === d.id;
-            return (
-              <TouchableOpacity
-                key={d.id}
-                style={[styles.devicePill, active && styles.devicePillActive]}
-                onPress={() => setSelectedDevice(d)}
-                activeOpacity={0.8}
-              >
-                <Cpu
-                  size={13}
-                  color={active ? colors.primary : colors.textDim}
-                />
-                <Text
-                  style={[
-                    styles.deviceText,
-                    active && styles.deviceTextActive,
-                  ]}
-                >
-                  {d.name || d.id}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-
-        {/* Primary AQI Hero Metric */}
+        {/* Primary AQI Card */}
         <AQICard
           reading={currentReading}
           isConnected={connected}
@@ -131,12 +93,40 @@ export default function DashboardScreen() {
           pm10={currentReading?.pm10}
         />
 
-        {/* Groq AI Atmospheric Guidance */}
+        {/* Dispersion & Circulation Status */}
+        <OutdoorStatus
+          reading={currentReading}
+          weatherMetrics={weatherMetrics}
+        />
+
+        {/* Groq Precaution Guidance */}
         <RecommendationCard
           recommendation={recommendation}
           loading={loading && !recommendation}
         />
+
+        {/* Historical Atmospheric Bar Trend */}
+        <AQIChart data={history} />
       </ScreenLayout>
+
+      {/* Floating Action Button: Ask Aera AI */}
+      <TouchableOpacity
+        style={styles.floatingAiBtn}
+        onPress={handleOpenAi}
+        activeOpacity={0.85}
+      >
+        <Sparkles size={18} color={colors.card} />
+      </TouchableOpacity>
+
+      {/* Hardware Pairing Bottom Sheet */}
+      <ClaimDeviceModal
+        visible={claimModalVisible}
+        onClose={() => setClaimModalVisible(false)}
+        onDeviceClaimed={(newDev) => {
+          refreshDevices();
+          setSelectedDevice(newDev);
+        }}
+      />
     </View>
   );
 }
@@ -148,37 +138,18 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingTop: 14,
+    paddingBottom: 80,
   },
-  deviceList: {
-    marginBottom: 16,
-  },
-  deviceListContent: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  devicePill: {
-    flexDirection: "row",
+  floatingAiBtn: {
+    position: "absolute",
+    right: 20,
+    bottom: 24,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: colors.primary,
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadows.soft,
-  },
-  devicePillActive: {
-    borderColor: colors.primaryBorder,
-    backgroundColor: colors.primaryLight,
-  },
-  deviceText: {
-    fontSize: typography.sizes.xs,
-    color: colors.textMuted,
-    fontWeight: typography.weights.medium,
-  },
-  deviceTextActive: {
-    color: colors.primary,
-    fontWeight: typography.weights.bold,
+    justifyContent: "center",
+    ...shadows.card,
   },
 });

@@ -1,3 +1,5 @@
+# app/schemas/monitoring.py
+
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -32,6 +34,8 @@ class AmbientTelemetryPayload(BaseModel):
     pm2_5: float | None = None
     pm10: float | None = None
     co: float | None = None
+    aqi: int | None = None
+    category: str | None = None
     source: str = "ambient"
 
 
@@ -48,3 +52,15 @@ class StructuredRecommendation(BaseModel):
 class RecommendationResponse(BaseModel):
     device_id: str | None = None
     data: StructuredRecommendation
+
+
+class AmbientSnapshotResponse(BaseModel):
+    source: str
+    aqi: int
+    category: str
+    pm25: float | None = None
+    pm10: float | None = None
+    temperature: float | None = None
+    humidity: float | None = None
+    co: float | None = None
+    timestamp: datetime

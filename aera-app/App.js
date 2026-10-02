@@ -1,9 +1,11 @@
-import React, { useEffect, useCallback } from "react";
+// aera-app/App.jsx
+import React, { useEffect } from "react";
 import { View, StyleSheet } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import * as SplashScreen from "expo-splash-screen";
 import { AuthProvider, useAuth } from "./src/hooks/useAuth";
+import { DeviceProvider } from "./src/hooks/useDevice";
 import AppNavigator from "./src/navigation/AppNavigator";
 import { colors } from "./src/styles/theme";
 
@@ -39,7 +41,9 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <MainContent />
+        <DeviceProvider>
+          <MainContent />
+        </DeviceProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

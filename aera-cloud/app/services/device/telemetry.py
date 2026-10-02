@@ -1,12 +1,15 @@
+# app/services/device/telemetry.py
+
+import json
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.database import AsyncSessionLocal
+from sqlalchemy import select
+
+from app.core import logger, AsyncSessionLocal, get_redis_client
 from app.db.models.reading import Reading
 from app.db.models.device import Device
 from app.utils.aqi import compute_naqi
 from app.utils.validators import validate_sensor_payload
-from app.core.logging import logger
-
 
 async def process_telemetry(
     device_id: str,
@@ -14,8 +17,8 @@ async def process_telemetry(
     session: AsyncSession | None = None,
 ) -> dict | None:
     """
-    Validates sensor values, computes NAQI, stores reading in PostgreSQL,
-    and returns enriched data with buzzer triggers for the ESP32.
+    Validates sensor values, computes NAQI, updates Redis hot telemetry/heartbeat,
+    persists reading to PostgreSQL, and returns enriched telemetry with buzzer status.
     """
     if not validate_sensor_payload(data):
         logger.warning(f"Rejected invalid telemetry from '{device_id}': {data}")
@@ -23,22 +26,66 @@ async def process_telemetry(
 
     pm2_5 = float(data.get("pm2_5", 0.0))
     pm10 = float(data.get("pm10", 0.0))
+    co = float(data.get("co", 0.0))
     temp = float(data.get("temperature")) if data.get("temperature") is not None else None
     hum = float(data.get("humidity")) if data.get("humidity") is not None else None
 
+    # Calculate standard AQI based on particulates
     aqi, category = compute_naqi(pm2_5, pm10)
 
+    # MQ-9 threshold alert: PPM >= 350.0 indicates dangerous CO/gas levels
+    co_alert = co >= 350.0
+    buzzer_alert = (aqi > 200) or co_alert
+
+    enriched = {
+        "device_id": device_id,
+        "pm2_5": pm2_5,
+        "pm10": pm10,
+        "co": co,
+        "temperature": temp,
+        "humidity": hum,
+        "aqi": aqi,
+        "category": category,
+        "buzzer_alert": buzzer_alert,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+    # 1. Update in-memory Redis cache
+    redis = get_redis_client()
+    if redis:
+        try:
+            # 15s TTL: Missing 3 transmissions marks the node as offline
+            await redis.set(f"device:{device_id}:heartbeat", "online", ex=15)
+            await redis.set(f"device:{device_id}:latest", json.dumps(enriched))
+        except Exception as e:
+            logger.error(f"Redis cache write failed for '{device_id}': {e}")
+
+    # 2. Persist to PostgreSQL
     async def _save_record(s: AsyncSession):
-        dev = await s.get(Device, device_id)
+        stmt = select(Device).where(Device.id == device_id)
+        result = await s.execute(stmt)
+        dev = result.scalars().first()
+
         if not dev:
-            dev = Device(id=device_id, name=f"Node {device_id}")
+            dev = Device(
+                id=device_id,
+                name=f"Node {device_id[-6:] if len(device_id) >= 6 else device_id}",
+                owner_id=None,
+            )
             s.add(dev)
             await s.flush()
+
+            if redis:
+                try:
+                    await redis.set(f"device:{device_id}:unclaimed", "true", ex=900)
+                except Exception:
+                    pass
 
         record = Reading(
             device_id=device_id,
             pm2_5=pm2_5,
             pm10=pm10,
+            co=co,
             temperature=temp,
             humidity=hum,
             aqi=aqi,
@@ -53,14 +100,4 @@ async def process_telemetry(
         async with AsyncSessionLocal() as fresh_session:
             await _save_record(fresh_session)
 
-    return {
-        "device_id": device_id,
-        "pm2_5": pm2_5,
-        "pm10": pm10,
-        "temperature": temp,
-        "humidity": hum,
-        "aqi": aqi,
-        "category": category,
-        "buzzer_alert": aqi > 200,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    }
+    return enriched

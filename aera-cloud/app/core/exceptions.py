@@ -1,10 +1,10 @@
-from fastapi import HTTPException, status
+# app/core/exceptions.py
 
+from fastapi import HTTPException, status
 
 class AeraException(HTTPException):
     def __init__(self, status_code: int, detail: str):
         super().__init__(status_code=status_code, detail=detail)
-
 
 class CredentialsException(AeraException):
     def __init__(self, detail: str = "Could not validate credentials"):
@@ -13,7 +13,6 @@ class CredentialsException(AeraException):
             detail=detail,
         )
 
-
 class DeviceNotFoundException(AeraException):
     def __init__(self, device_id: str):
         super().__init__(
@@ -21,6 +20,12 @@ class DeviceNotFoundException(AeraException):
             detail=f"Device '{device_id}' not found or not registered.",
         )
 
+class DeviceAlreadyClaimedException(AeraException):
+    def __init__(self, device_id: str):
+        super().__init__(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Device '{device_id}' is already paired with another account.",
+        )
 
 class UserAlreadyExistsException(AeraException):
     def __init__(self, email: str):

@@ -1,3 +1,4 @@
+// aera-app/src/services/auth.js
 import api from "./api";
 
 export const authService = {
@@ -8,11 +9,6 @@ export const authService = {
 
   async login(credentials) {
     const res = await api.post("/v1/auth/login", credentials);
-    return res.data;
-  },
-
-  async getProfile() {
-    const res = await api.get("/v1/user/me");
     return res.data;
   },
 
@@ -29,3 +25,5 @@ export const authService = {
     return res.data;
   },
 };
+
+export default authService;

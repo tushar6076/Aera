@@ -1,3 +1,4 @@
+// aera-web/src/pages/Reset.jsx
 import React, { useState } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { authService } from "@/services/auth";
@@ -52,12 +53,20 @@ export default function Reset() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-      {/* Cool Atmospheric Ambient Glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-200/35 rounded-full blur-3xl pointer-events-none" />
+      {/* Ambient Glow using chart-2 (indigo telemetry) token */}
+      <div 
+        className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl pointer-events-none opacity-25" 
+        style={{ backgroundColor: "var(--chart-2)" }}
+      />
 
       <div className="w-full max-w-md space-y-8 relative z-10">
         <div className="text-center space-y-2">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-sky-600 to-indigo-600 text-white shadow-md shadow-sky-500/20 mb-2">
+          <div 
+            className="inline-flex h-12 w-12 items-center justify-center rounded-2xl text-primary-foreground shadow-md mb-2"
+            style={{
+              background: "linear-gradient(135deg, var(--chart-1) 0%, var(--chart-2) 100%)",
+            }}
+          >
             <Wind className="w-6 h-6" />
           </div>
           <h2 className="text-3xl font-extrabold text-foreground tracking-tight">Set New Password</h2>
@@ -66,10 +75,17 @@ export default function Reset() {
           </p>
         </div>
 
-        <div className="rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-sm backdrop-blur-xl">
+        <div className="rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-sm">
           {success ? (
             <div className="space-y-4 text-center py-4">
-              <div className="p-3 bg-emerald-50 text-emerald-600 rounded-full w-fit mx-auto border border-emerald-200">
+              <div 
+                className="p-3 rounded-full w-fit mx-auto border"
+                style={{
+                  backgroundColor: "var(--accent)",
+                  borderColor: "var(--primary-light)",
+                  color: "var(--primary)",
+                }}
+              >
                 <CheckCircle2 className="w-8 h-8" />
               </div>
               <h3 className="text-lg font-bold text-foreground">Password Updated</h3>
@@ -80,8 +96,8 @@ export default function Reset() {
           ) : (
             <form onSubmit={handleReset} className="space-y-4">
               {errorMsg && (
-                <div className="flex items-center gap-2 p-3 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-xl">
-                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                <div className="flex items-center gap-2 p-3 text-xs rounded-xl border border-destructive/30 bg-destructive/10 text-destructive">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-destructive" />
                   <span>{errorMsg}</span>
                 </div>
               )}
@@ -97,7 +113,7 @@ export default function Reset() {
                     value={token}
                     onChange={(e) => setToken(e.target.value)}
                     placeholder="Paste received token"
-                    className="bg-muted/30 border-border text-foreground font-mono text-xs h-10 focus-visible:ring-sky-500"
+                    className="bg-muted/40 border-border text-foreground font-mono text-xs h-10 focus-visible:ring-ring"
                   />
                 </div>
               )}
@@ -113,7 +129,7 @@ export default function Reset() {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Min. 8 characters"
-                    className="bg-muted/30 border-border text-foreground placeholder:text-muted-foreground/60 pl-10 h-10 text-sm focus-visible:ring-sky-500"
+                    className="bg-muted/40 border-border text-foreground placeholder:text-muted-foreground/60 pl-10 h-10 text-sm focus-visible:ring-ring"
                   />
                   <Lock className="w-4 h-4 text-muted-foreground absolute left-3.5 top-3 pointer-events-none" />
                 </div>
@@ -130,7 +146,7 @@ export default function Reset() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Re-enter password"
-                    className="bg-muted/30 border-border text-foreground placeholder:text-muted-foreground/60 pl-10 h-10 text-sm focus-visible:ring-sky-500"
+                    className="bg-muted/40 border-border text-foreground placeholder:text-muted-foreground/60 pl-10 h-10 text-sm focus-visible:ring-ring"
                   />
                   <Lock className="w-4 h-4 text-muted-foreground absolute left-3.5 top-3 pointer-events-none" />
                 </div>
@@ -139,7 +155,7 @@ export default function Reset() {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-sky-600 hover:bg-sky-500 text-white text-sm font-semibold h-11 gap-2 shadow-md shadow-sky-600/20 mt-2 cursor-pointer transition-all"
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold h-11 gap-2 shadow-sm mt-2 cursor-pointer transition-all active:scale-[0.99]"
               >
                 <span>{loading ? "Saving Changes..." : "Reset Password"}</span>
                 <ArrowRight className="w-4 h-4" />
@@ -147,8 +163,8 @@ export default function Reset() {
             </form>
           )}
 
-          <div className="mt-6 pt-6 border-t border-border/80 text-center">
-            <Link to="/login" className="text-xs font-semibold text-sky-600 hover:text-sky-700">
+          <div className="mt-6 pt-6 border-t border-border text-center">
+            <Link to="/login" className="text-xs font-semibold text-primary hover:underline">
               Return to Login
             </Link>
           </div>

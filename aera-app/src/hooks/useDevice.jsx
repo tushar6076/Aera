@@ -1,20 +1,24 @@
+// aera-app/src/hooks/useDevice.jsx
 import React, { useState, useEffect, useCallback, createContext, useContext } from "react";
-import { monitoringService } from "../services/monitoring";
-import api from "../services/api";
+import { deviceService } from "../services/device";
 
 const DeviceContext = createContext(null);
 
 export function DeviceProvider({ children }) {
   const [devices, setDevices] = useState([]);
+  const [unclaimedDevices, setUnclaimedDevices] = useState([]);
   const [selectedDevice, setSelectedDevice] = useState(null);
+  const [deviceLiveState, setDeviceLiveState] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [discovering, setDiscovering] = useState(false);
   const [error, setError] = useState(null);
 
+  // 1. Fetch user's claimed nodes
   const fetchDevices = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const list = await monitoringService.getDevices();
+      const list = await deviceService.getMyDevices();
       setDevices(list || []);
 
       setSelectedDevice((current) => {
@@ -31,29 +35,72 @@ export function DeviceProvider({ children }) {
     }
   }, []);
 
+  // 2. Discover unclaimed nearby nodes in pairing mode
+  const scanUnclaimed = useCallback(async () => {
+    try {
+      setDiscovering(true);
+      const unclaimed = await deviceService.getUnclaimedDevices();
+      setUnclaimedDevices(unclaimed || []);
+      return unclaimed;
+    } catch (err) {
+      console.warn("Failed scanning for unclaimed devices:", err);
+      return [];
+    } finally {
+      setDiscovering(false);
+    }
+  }, []);
+
+  // 3. Poll Redis RAM heartbeat for the active node
+  const fetchLiveStatus = useCallback(async (deviceId) => {
+    if (!deviceId) {
+      setDeviceLiveState(null);
+      return;
+    }
+    try {
+      const state = await deviceService.getLiveState(deviceId);
+      setDeviceLiveState(state);
+    } catch (err) {
+      console.warn(`Failed to fetch live state for ${deviceId}:`, err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchDevices();
   }, [fetchDevices]);
 
-  const claim = async (deviceId, name) => {
-    const newDevice = await monitoringService.claimDevice(deviceId, name);
+  useEffect(() => {
+    if (selectedDevice?.id) {
+      fetchLiveStatus(selectedDevice.id);
+      const interval = setInterval(() => fetchLiveStatus(selectedDevice.id), 10000);
+      return () => clearInterval(interval);
+    }
+  }, [selectedDevice?.id, fetchLiveStatus]);
+
+  // 4. Claim and Release handlers
+  const claim = async (deviceId, name = "My Aera Node") => {
+    const newDevice = await deviceService.claimDevice(deviceId, name);
     await fetchDevices();
     setSelectedDevice(newDevice);
+    setUnclaimedDevices((prev) => prev.filter((id) => id !== deviceId));
     return newDevice;
   };
 
   const release = async (deviceId) => {
-    await api.delete(`/v1/user/devices/${deviceId}`);
+    await deviceService.releaseDevice(deviceId);
     await fetchDevices();
   };
 
   const value = {
     devices,
+    unclaimedDevices,
     selectedDevice,
     setSelectedDevice,
+    deviceLiveState,
     loading,
+    discovering,
     error,
     refreshDevices: fetchDevices,
+    scanUnclaimed,
     claim,
     release,
   };
@@ -72,3 +119,5 @@ export function useDevice() {
   }
   return context;
 }
+
+export default useDevice;

@@ -1,26 +1,15 @@
-import api from "./api";
+// aera-app/src/services/monitoring.js
+import api, { WS_BASE_URL } from "./api";
 
 export const monitoringService = {
   // --- Hardware Device Telemetry (ESP32) ---
-  async getDevices() {
-    const res = await api.get("/v1/user/devices");
-    return res.data;
-  },
-
-  async claimDevice(deviceId, name) {
-    const res = await api.post("/v1/user/claim-device", {
-      device_id: deviceId,
-      name,
-    });
-    return res.data;
-  },
-
+  
   async getLatest(deviceId) {
     const res = await api.get(`/v1/monitoring/latest/${deviceId}`);
     return res.data;
   },
 
-  async getHistory(deviceId, limit = 30) {
+  async getHistory(deviceId, limit = 50) {
     const res = await api.get(`/v1/monitoring/history/${deviceId}?limit=${limit}`);
     return res.data;
   },
@@ -30,12 +19,16 @@ export const monitoringService = {
     return res.data;
   },
 
-  // Alias for backward compatibility
   async getRecommendation(deviceId) {
     return this.getDeviceRecommendation(deviceId);
   },
 
+  getLiveStreamUrl(deviceId) {
+    return `${WS_BASE_URL}/api/v1/monitoring/ws/live/${deviceId}`;
+  },
+
   // --- Ambient Public Weather & Air Layer ---
+  
   async reverseGeocode(lat, lon) {
     try {
       const res = await fetch(
@@ -103,7 +96,14 @@ export const monitoringService = {
   },
 
   async getAmbientRecommendation(telemetryPayload) {
-    const res = await api.post(`/v1/monitoring/recommendation/ambient`, telemetryPayload);
+    const res = await api.post("/v1/monitoring/recommendation/ambient", telemetryPayload);
+    return res.data;
+  },
+
+  async getCurrentAmbientSnapshot() {
+    const res = await api.get("/v1/monitoring/recommendation/ambient/current");
     return res.data;
   },
 };
+
+export default monitoringService;

@@ -10,13 +10,11 @@
 // ============================================================================
 // CLOUD GATEWAY & HARDWARE PROFILES
 // ============================================================================
-#define AP_SSID                  "Aera-AQI"
 #define DNS_PORT                 53
 
 #define AERA_HOST                "aera-cloud.hacksmiths.dev"
 #define AERA_PORT                443
 #define AERA_INGEST_ENDPOINT     "/v1/telemetry/ingest"
-#define AERA_DEVICE_ID           "ESP32-SOLO1-NODE01"
 #define AERA_API_KEY             "4d977bc73f3b74fa735b5e4d3503df5fe534a6064bd6fabb51919864b6ce47b4"
 
 // Pin Assignments
@@ -42,7 +40,33 @@ enum SystemState {
 };
 
 // ============================================================================
-// CAPTIVE PORTAL INTERFACE (COOL-TONED SLATE PALETTE)
+// HARDWARE IDENTITY (DERIVED FROM EFUSE MAC)
+// ============================================================================
+static String aeraDeviceId = "";  // e.g. "AERA-B21A80"
+static String aeraAPName   = "";  // e.g. "Aera-B21A80"
+
+static void initHardwareIdentity() {
+  uint64_t mac = ESP.getEfuseMac();
+  char idBuffer[20];
+  char apBuffer[20];
+
+  // Extract the last 3 octets (6 hex characters) for a clean hardware tag
+  uint32_t shortId = (uint32_t)(mac >> 24) & 0xFFFFFF;
+
+  snprintf(idBuffer, sizeof(idBuffer), "AERA-%06X", shortId);
+  snprintf(apBuffer, sizeof(apBuffer), "Aera-%06X", shortId);
+
+  aeraDeviceId = String(idBuffer);
+  aeraAPName   = String(apBuffer);
+
+  Serial.println("\n[AERA-HW] Silicon Hardware Fingerprint Initialized:");
+  Serial.printf("          Node ID : %s\n", aeraDeviceId.c_str());
+  Serial.printf("          Raw MAC : %s\n", WiFi.macAddress().c_str());
+  Serial.printf("          AP SSID : %s\n", aeraAPName.c_str());
+}
+
+// ============================================================================
+// CAPTIVE PORTAL INTERFACE
 // ============================================================================
 const char PORTAL_HTML[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
@@ -50,7 +74,7 @@ const char PORTAL_HTML[] PROGMEM = R"rawliteral(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Aera AQI Station Setup</title>
+  <title>Aera Station Setup</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -70,7 +94,7 @@ const char PORTAL_HTML[] PROGMEM = R"rawliteral(
       padding: 28px;
       width: 100%;
       max-width: 400px;
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
     }
     .badge {
       display: inline-flex;
@@ -87,25 +111,9 @@ const char PORTAL_HTML[] PROGMEM = R"rawliteral(
       border-radius: 9999px;
       margin-bottom: 16px;
     }
-    .badge-dot {
-      width: 6px;
-      height: 6px;
-      background: #38bdf8;
-      border-radius: 50%;
-    }
-    h2 {
-      font-size: 22px;
-      font-weight: 800;
-      color: #ffffff;
-      letter-spacing: -0.025em;
-      margin-bottom: 6px;
-    }
-    p {
-      color: #94a3b8;
-      font-size: 13px;
-      line-height: 1.5;
-      margin-bottom: 24px;
-    }
+    .badge-dot { width: 6px; height: 6px; background: #38bdf8; border-radius: 50%; }
+    h2 { font-size: 22px; font-weight: 800; color: #ffffff; margin-bottom: 6px; }
+    p { color: #94a3b8; font-size: 13px; line-height: 1.5; margin-bottom: 24px; }
     label {
       display: block;
       font-size: 11px;
@@ -125,11 +133,8 @@ const char PORTAL_HTML[] PROGMEM = R"rawliteral(
       font-size: 14px;
       margin-bottom: 18px;
       outline: none;
-      transition: border-color 0.2s;
     }
-    select:focus, input[type="password"]:focus {
-      border-color: #0284c7;
-    }
+    select:focus, input[type="password"]:focus { border-color: #0284c7; }
     button {
       width: 100%;
       padding: 12px;
@@ -140,28 +145,21 @@ const char PORTAL_HTML[] PROGMEM = R"rawliteral(
       font-size: 14px;
       font-weight: 700;
       cursor: pointer;
-      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
-      transition: background 0.2s, transform 0.1s;
-    }
-    button:active {
-      transform: scale(0.98);
-      background: #0369a1;
     }
     .footer-note {
       text-align: center;
       margin-top: 20px;
-      font-size: 11px;
-      color: #64748b;
+      font-size: 12px;
+      color: #38bdf8;
+      font-family: monospace;
     }
   </style>
 </head>
 <body>
   <div class="card">
-    <div class="badge">
-      <span class="badge-dot"></span> Telemetry Station
-    </div>
+    <div class="badge"><span class="badge-dot"></span> Telemetry Station</div>
     <h2>Pair Node to Wi-Fi</h2>
-    <p>Select your local 2.4 GHz network to link this atmospheric telemetry node to your Aera Cloud workspace.</p>
+    <p>Select your local 2.4 GHz network to link this atmospheric node to your Aera Cloud workspace.</p>
     <form action="/save" method="POST">
       <label for="ssid">Available Access Points</label>
       <select name="ssid" id="ssid">{{NETWORKS}}</select>
@@ -169,7 +167,7 @@ const char PORTAL_HTML[] PROGMEM = R"rawliteral(
       <input type="password" name="password" id="pass" placeholder="••••••••" required>
       <button type="submit">Establish Uplink</button>
     </form>
-    <div class="footer-note">Node ID: ESP32-SOLO1-NODE01</div>
+    <div class="footer-note">Hardware Node ID: {{DEVICE_ID}}</div>
   </div>
 </body>
 </html>
@@ -228,13 +226,11 @@ static void pulseLed() {
 static void updateStatusIndicators() {
   unsigned long now = millis();
 
-  // Reset short visual pulse after telemetry dispatch
   if (isPulsing && now >= pulseEndTime) {
     isPulsing = false;
     digitalWrite(PIN_STATUS_LED, (currentState == STATE_ONLINE) ? HIGH : LOW);
   }
 
-  // Handle temporal patterns across operational states
   if (currentState == STATE_WIFI_CONNECTING || currentState == STATE_PORTAL_ACTIVE) {
     uint16_t interval = (currentState == STATE_PORTAL_ACTIVE) ? 500 : 200;
     if (now - lastBlinkTime >= interval) {
@@ -264,8 +260,6 @@ static float readMQ9Ppm() {
   float rawAdc = (float)rawSum / 8.0f;
   float voltage = (rawAdc / 4095.0f) * 3.3f;
   float ratio = voltage / 3.3f;
-  
-  // Heuristic scaling approximation for Carbon Monoxide / Flammable Gas PPM
   return 10.0f + (ratio * 990.0f);
 }
 
@@ -286,6 +280,7 @@ static void handlePortalRoot() {
 
   String page = FPSTR(PORTAL_HTML);
   page.replace("{{NETWORKS}}", options);
+  page.replace("{{DEVICE_ID}}", aeraDeviceId);
   server.send(200, "text/html", page);
 }
 
@@ -304,7 +299,7 @@ static void handlePortalSave() {
     server.send(200, "text/html", 
       "<!DOCTYPE html><html><body style='background:#0f172a;color:#f8fafc;font-family:-apple-system,sans-serif;text-align:center;padding:50px;'>"
       "<h2 style='color:#38bdf8;margin-bottom:12px;'>Node Paired Successfully</h2>"
-      "<p style='color:#94a3b8;font-size:14px;'>Restarting station radio and connecting to " + newSSID + "...</p>"
+      "<p style='color:#94a3b8;font-size:14px;'>Connecting to " + newSSID + "...</p>"
       "</body></html>");
 
     delay(2000);
@@ -316,28 +311,25 @@ static void handlePortalSave() {
 
 static void startCaptivePortal() {
   Serial.println("\n========================================================");
-  Serial.println("[AERA] Launching Access Point: " AP_SSID);
+  Serial.printf("[AERA] Launching Access Point: %s\n", aeraAPName.c_str());
   Serial.println("========================================================");
 
   WiFi.disconnect(true);
   delay(100);
 
-  // Set dual AP/Station mode so scanning runs reliably alongside AP broadcasting
   WiFi.mode(WIFI_AP_STA);
-  bool apSuccess = WiFi.softAP(AP_SSID);
+  bool apSuccess = WiFi.softAP(aeraAPName.c_str());
 
   if (apSuccess) {
     IPAddress apIP(192, 168, 4, 1);
     WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
 
-    // Wildcard DNS redirect to force captive detection across iOS, Android, macOS, and Windows
     dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
     dnsServer.start(DNS_PORT, "*", apIP);
 
     server.on("/", HTTP_GET, handlePortalRoot);
     server.on("/save", HTTP_POST, handlePortalSave);
 
-    // Modern OS captive network test routes
     server.on("/generate_204", HTTP_GET, handlePortalRoot);
     server.on("/gen_204", HTTP_GET, handlePortalRoot);
     server.on("/hotspot-detect.html", HTTP_GET, handlePortalRoot);
@@ -350,7 +342,7 @@ static void startCaptivePortal() {
 
     server.begin();
     setSystemState(STATE_PORTAL_ACTIVE);
-    Serial.printf("[AERA] Station broadcast active! SSID: %s | Gateway: http://192.168.4.1\n", AP_SSID);
+    Serial.printf("[AERA] Station broadcast active! SSID: %s | Gateway: http://192.168.4.1\n", aeraAPName.c_str());
   } else {
     Serial.println("[ERROR] Failed to start SoftAP radio layer.");
     setSystemState(STATE_ERROR);
@@ -370,7 +362,7 @@ static bool connectWiFi(const String& ssid, const String& pass) {
 
   Serial.printf("[AERA] Associating with network: %s", ssid.c_str());
   uint8_t attempts = 0;
-  while (WiFi.status() != WL_CONNECTED && attempts < 25) { // 10s timeout
+  while (WiFi.status() != WL_CONNECTED && attempts < 25) {
     delay(400);
     Serial.print(".");
     attempts++;
@@ -381,7 +373,7 @@ static bool connectWiFi(const String& ssid, const String& pass) {
 
 static bool postTelemetry(float temp, float hum, float co) {
   WiFiClientSecure client;
-  client.setInsecure(); // Permits self-signed or development cloud cert validation
+  client.setInsecure();
 
   HTTPClient https;
   char url[160];
@@ -393,7 +385,7 @@ static bool postTelemetry(float temp, float hum, float co) {
   }
 
   https.addHeader("Content-Type", "application/json");
-  https.addHeader("X-Device-ID", AERA_DEVICE_ID);
+  https.addHeader("X-Device-ID", aeraDeviceId.c_str());
 
   char authHeader[128];
   snprintf(authHeader, sizeof(authHeader), "Bearer %s", AERA_API_KEY);
@@ -402,7 +394,7 @@ static bool postTelemetry(float temp, float hum, float co) {
   char jsonBody[256];
   snprintf(jsonBody, sizeof(jsonBody),
            "{\"device_id\":\"%s\",\"temperature\":%.2f,\"humidity\":%.2f,\"co\":%.2f}",
-           AERA_DEVICE_ID, temp, hum, co);
+           aeraDeviceId.c_str(), temp, hum, co);
 
   int httpCode = https.POST((uint8_t*)jsonBody, strlen(jsonBody));
   bool success = (httpCode >= 200 && httpCode < 300);
@@ -431,12 +423,14 @@ void setup() {
   setSystemState(STATE_BOOTING);
   dhtSensor.begin();
 
+  // Derive unique hardware IDs before doing anything with radios or storage
+  initHardwareIdentity();
+
   Serial.println("\n--------------------------------------------------------");
   Serial.println(" Aera Environmental Labs - Atmospheric Sensor Node");
-  Serial.println(" Target Architecture: ESP32-Solo1 Telemetry Station");
+  Serial.printf(" Device Hardware Identity: %s\n", aeraDeviceId.c_str());
   Serial.println("--------------------------------------------------------");
 
-  // Read non-volatile storage for operator credentials (no hardcoded credentials)
   prefs.begin("aera-net", true);
   activeSSID = prefs.getString("ssid", "");
   activePass = prefs.getString("pass", "");
@@ -458,14 +452,12 @@ void setup() {
     Serial.println("[AERA] No previous network configured.");
   }
 
-  // Launch the captive configuration portal when unconfigured or connection drops
   startCaptivePortal();
 }
 
 void loop() {
   updateStatusIndicators();
 
-  // Route requests while captive portal is active
   if (currentState == STATE_PORTAL_ACTIVE) {
     dnsServer.processNextRequest();
     server.handleClient();
@@ -501,17 +493,15 @@ void loop() {
 
     float co_ppm = readMQ9Ppm();
 
-    Serial.printf("[TELEMETRY] Ambient Temp: %.1f C | Humidity: %.1f %% | CO Conc: %.2f PPM\n",
-                  temperature, humidity, co_ppm);
+    Serial.printf("[TELEMETRY] [%s] Temp: %.1f C | Humidity: %.1f %% | CO: %.2f PPM\n",
+                  aeraDeviceId.c_str(), temperature, humidity, co_ppm);
 
-    // Evaluate Safety Thresholds
     if (co_ppm >= MQ9_ALERT_PPM_LIMIT) {
       setSystemState(STATE_ALERT);
     } else if (WiFi.status() == WL_CONNECTED) {
       setSystemState(STATE_ONLINE);
     }
 
-    // Dispatch secure telemetry packet
     if (WiFi.status() == WL_CONNECTED) {
       bool dispatched = postTelemetry(temperature, humidity, co_ppm);
       if (dispatched) {

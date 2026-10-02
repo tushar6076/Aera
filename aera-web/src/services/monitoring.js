@@ -1,18 +1,28 @@
 // aera-web/src/services/monitoring.js
-import api from "./api";
+import api, { WS_BASE_URL } from "./api";
 
 export const monitoringService = {
   // --- Hardware Device Endpoints (ESP32) ---
+  
+  /**
+   * Get latest telemetry (checks Redis RAM first, then PostgreSQL)
+   */
   async getLatest(deviceId) {
     const res = await api.get(`/v1/monitoring/latest/${deviceId}`);
     return res.data;
   },
 
+  /**
+   * Get chronological telemetry records for charts
+   */
   async getHistory(deviceId, limit = 50) {
     const res = await api.get(`/v1/monitoring/history/${deviceId}?limit=${limit}`);
     return res.data;
   },
 
+  /**
+   * Fetch structured precautions for a specific hardware node
+   */
   async getDeviceRecommendation(deviceId) {
     const res = await api.get(`/v1/monitoring/recommendation/device/${deviceId}`);
     return res.data;
@@ -23,7 +33,15 @@ export const monitoringService = {
     return this.getDeviceRecommendation(deviceId);
   },
 
+  /**
+   * Constructs the WebSocket streaming URL for live dashboard feeds
+   */
+  getLiveStreamUrl(deviceId) {
+    return `${WS_BASE_URL}/api/v1/monitoring/ws/live/${deviceId}`;
+  },
+
   // --- Ambient Public Weather & Air Layer (No Hardware Needed) ---
+  
   async reverseGeocode(lat, lon) {
     try {
       const res = await fetch(
@@ -54,7 +72,6 @@ export const monitoringService = {
     const currentW = weatherRes.current || {};
     const currentA = aqiRes.current || {};
 
-    // Transform past few hourly points into a historical trend array
     const hourlyTimes = aqiRes.hourly?.time?.slice(0, 24) || [];
     const hourlyPM25 = aqiRes.hourly?.pm2_5?.slice(0, 24) || [];
     const hourlyPM10 = aqiRes.hourly?.pm10?.slice(0, 24) || [];
@@ -88,9 +105,10 @@ export const monitoringService = {
     };
   },
 
-  // Groq dynamic AI recommendation for ambient telemetry
   async getAmbientRecommendation(telemetryPayload) {
     const res = await api.post(`/v1/monitoring/recommendation/ambient`, telemetryPayload);
     return res.data;
   },
 };
+
+export default monitoringService;

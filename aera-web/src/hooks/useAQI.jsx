@@ -1,6 +1,5 @@
 // aera-web/src/hooks/useAQI.jsx
 import { useState, useEffect, useRef } from "react";
-import { WS_BASE_URL } from "../services/api";
 import { monitoringService } from "../services/monitoring";
 
 export function useAQI(deviceId) {
@@ -36,7 +35,7 @@ export function useAQI(deviceId) {
 
         const readingData = {
           ...ambient.reading,
-          aqi: null, // Will be set by Groq
+          aqi: null,
           category: "Analyzing",
           created_at: new Date().toISOString(),
         };
@@ -76,20 +75,22 @@ export function useAQI(deviceId) {
         setLoading(true);
         setIsHardwareActive(true);
 
-        const [hist, rec, latest] = await Promise.allSettled([
-          monitoringService.getHistory(id, 30),
+        const [histResult, recResult, latestResult] = await Promise.allSettled([
+          monitoringService.getHistory(id, 50),
           monitoringService.getDeviceRecommendation(id),
           monitoringService.getLatest(id),
         ]);
 
         if (!isMounted) return;
 
-        if (hist.status === "fulfilled") setHistory(hist.value);
-        if (rec.status === "fulfilled") {
-          setRecommendation(rec.value.data || rec.value.recommendation);
+        if (histResult.status === "fulfilled") {
+          setHistory(histResult.value || []);
         }
-        if (latest.status === "fulfilled") {
-          setCurrentReading(latest.value);
+        if (recResult.status === "fulfilled") {
+          setRecommendation(recResult.value?.data || null);
+        }
+        if (latestResult.status === "fulfilled" && latestResult.value) {
+          setCurrentReading(latestResult.value);
         }
       } catch (err) {
         console.error("Hardware telemetry load failed:", err);
@@ -101,10 +102,10 @@ export function useAQI(deviceId) {
     if (deviceId) {
       loadHardwareData(deviceId);
     } else {
-      if (navigator.geolocation) {
+      if (typeof window !== "undefined" && navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           (pos) => loadAmbientData(pos.coords.latitude, pos.coords.longitude),
-          () => loadAmbientData() // Fallback coordinates if location denied
+          () => loadAmbientData()
         );
       } else {
         loadAmbientData();
@@ -116,7 +117,7 @@ export function useAQI(deviceId) {
     };
   }, [deviceId]);
 
-  // 2. Hardware Live WebSocket Stream (Only if deviceId is provided)
+  // 2. Hardware Live WebSocket Stream
   useEffect(() => {
     if (!deviceId) {
       setConnected(false);
@@ -124,7 +125,7 @@ export function useAQI(deviceId) {
     }
 
     let reconnectTimer = null;
-    const wsUrl = `${WS_BASE_URL}/api/v1/monitoring/ws/live/${deviceId}`;
+    const wsUrl = monitoringService.getLiveStreamUrl(deviceId);
 
     function connect() {
       const ws = new WebSocket(wsUrl);
@@ -169,3 +170,5 @@ export function useAQI(deviceId) {
     isHardwareActive,
   };
 }
+
+export default useAQI;

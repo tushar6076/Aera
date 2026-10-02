@@ -1,3 +1,4 @@
+// aera-web/src/components/dashboard/AQIChart.jsx
 import React from "react";
 import {
   ResponsiveContainer,
@@ -20,15 +21,15 @@ function CustomTooltip({ active, payload }) {
         </p>
         <div className="space-y-1 text-xs">
           {data.aqi !== undefined && (
-            <p className="font-semibold text-sky-600">
+            <p className="font-semibold text-primary">
               AQI: <span className="font-mono text-foreground">{data.aqi}</span>
             </p>
           )}
           <p className="text-muted-foreground">
-            PM2.5: <span className="font-mono text-foreground">{data.pm2_5} µg/m³</span>
+            PM2.5: <span className="font-mono text-foreground font-bold">{data.pm2_5} µg/m³</span>
           </p>
           <p className="text-muted-foreground">
-            PM10: <span className="font-mono text-foreground">{data.pm10} µg/m³</span>
+            PM10: <span className="font-mono text-foreground font-bold">{data.pm10} µg/m³</span>
           </p>
         </div>
       </div>
@@ -58,9 +59,12 @@ export default function AQIChart({ data = [] }) {
           <h3 className="text-base font-semibold text-foreground">Atmospheric Trend</h3>
           <p className="text-xs text-muted-foreground">Historical particulate curve</p>
         </div>
-        <div className="flex items-center space-x-1.5 text-xs">
-          <span className="h-2 w-2 rounded-full bg-sky-500" />
-          <span className="text-muted-foreground">PM2.5 Particle Flow</span>
+        <div className="flex items-center space-x-2 text-xs">
+          <span 
+            className="h-2 w-2 rounded-full" 
+            style={{ backgroundColor: "var(--chart-1)" }} 
+          />
+          <span className="text-muted-foreground font-medium">PM2.5 Particle Flow</span>
         </div>
       </div>
 
@@ -69,20 +73,20 @@ export default function AQIChart({ data = [] }) {
           <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <defs>
               <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.25} />
-                <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0.0} />
+                <stop offset="5%" stopColor="var(--chart-1)" stopOpacity={0.35} />
+                <stop offset="95%" stopColor="var(--chart-1)" stopOpacity={0.0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
             <XAxis
               dataKey="timeLabel"
-              stroke="#94a3b8"
+              stroke="var(--muted-foreground)"
               fontSize={11}
               tickLine={false}
               axisLine={false}
             />
             <YAxis
-              stroke="#94a3b8"
+              stroke="var(--muted-foreground)"
               fontSize={11}
               tickLine={false}
               axisLine={false}
@@ -92,7 +96,7 @@ export default function AQIChart({ data = [] }) {
             <Area
               type="monotone"
               dataKey="pm2_5"
-              stroke="#0ea5e9"
+              stroke="var(--chart-1)"
               strokeWidth={2.5}
               fillOpacity={1}
               fill="url(#chartGradient)"

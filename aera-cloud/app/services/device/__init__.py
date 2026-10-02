@@ -1,3 +1,5 @@
+# app/services/device/__init__.py
+
 from app.services.device.manager import device_manager
 from app.services.device.telemetry import process_telemetry
 
