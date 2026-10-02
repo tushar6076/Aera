@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "Aera",
+    "slug": "aera-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icons/favicon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/icons/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#f8fafc"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "dev.hacksmiths.aera",
+      "infoPlist": {
+        "UIStatusBarStyle": "UIStatusBarStyleDarkContent"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icons/android-icon-foreground.png",
+        "backgroundColor": "./assets/icons/android-icon-background.png"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-status-bar"
+    ]
+  }
+}
