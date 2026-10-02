@@ -7,6 +7,7 @@ from app.core.security import (
     verify_password,
     get_password_hash,
     create_access_token,
+    create_password_reset_token,  # ensure you export/import this helper
     verify_password_reset_token,
 )
 from app.db.models.user import User
@@ -18,7 +19,7 @@ from app.schemas.auth import (
     ResetPasswordRequest,
     MessageResponse,
 )
-from app.services.email import render_password_reset_email
+from app.services.email import send_mail, render_password_reset_email
 
 router = APIRouter()
 
@@ -70,7 +71,18 @@ async def forgot_password(payload: ForgotPasswordRequest, db: AsyncSession = Dep
     user = result.scalars().first()
 
     if user:
-        await render_password_reset_email(user.email)
+        # 1. Generate the signed 15-minute token for the email
+        reset_token = create_password_reset_token(user.email)
+        
+        # 2. Render the template synchronously (no await)
+        html_body = render_password_reset_email(reset_token=reset_token)
+        
+        # 3. Dispatch asynchronously via Titan Mail worker
+        await send_mail(
+            to_email=user.email,
+            subject="Aera - Reset Your Password",
+            html_body=html_body,
+        )
 
     return {
         "message": "If an account with that email exists, a password reset link has been dispatched."
