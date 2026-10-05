@@ -14,12 +14,15 @@ export default defineConfig({
     },
   },
   server: {
-    host: "127.0.0.1",
+    host: true,
     port: 5175,
     strictPort: true,
-    allowedHosts: [
-      "aera.hacksmiths.dev",
-      ".hacksmiths.dev", // Allows any subdomain under hacksmiths.dev
-    ],
+    allowedHosts: ["aera.hacksmiths.dev", ".hacksmiths.dev"],
+  },
+  preview: {
+    host: true,
+    port: 5175,
+    strictPort: true,
+    allowedHosts: ["aera.hacksmiths.dev", ".hacksmiths.dev"],
   },
 });

@@ -12,6 +12,7 @@ export function useAQI(deviceId) {
   const [loading, setLoading] = useState(true);
   const [isHardwareActive, setIsHardwareActive] = useState(false);
   const wsRef = useRef(null);
+  const watchdogTimerRef = useRef(null);
 
   // 1. Telemetry Loader (Ambient fallback when no deviceId, Hardware when deviceId exists)
   useEffect(() => {
@@ -73,7 +74,6 @@ export function useAQI(deviceId) {
     async function loadHardwareData(id) {
       try {
         setLoading(true);
-        setIsHardwareActive(true);
 
         const [histResult, recResult, latestResult] = await Promise.allSettled([
           monitoringService.getHistory(id, 50),
@@ -90,10 +90,19 @@ export function useAQI(deviceId) {
           setRecommendation(recResult.value?.data || null);
         }
         if (latestResult.status === "fulfilled" && latestResult.value) {
-          setCurrentReading(latestResult.value);
+          const reading = latestResult.value;
+          setCurrentReading(reading);
+
+          // Mark active only if telemetry was recorded within the last 20 seconds
+          const readingTime = new Date(reading.timestamp || reading.created_at).getTime();
+          const isFresh = Date.now() - readingTime < 20000;
+          setIsHardwareActive(isFresh);
+        } else {
+          setIsHardwareActive(false);
         }
       } catch (err) {
         console.error("Hardware telemetry load failed:", err);
+        setIsHardwareActive(false);
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -114,6 +123,7 @@ export function useAQI(deviceId) {
 
     return () => {
       isMounted = false;
+      if (watchdogTimerRef.current) clearTimeout(watchdogTimerRef.current);
     };
   }, [deviceId]);
 
@@ -121,6 +131,7 @@ export function useAQI(deviceId) {
   useEffect(() => {
     if (!deviceId) {
       setConnected(false);
+      setIsHardwareActive(false);
       return;
     }
 
@@ -131,13 +142,24 @@ export function useAQI(deviceId) {
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
-      ws.onopen = () => setConnected(true);
+      ws.onopen = () => {
+        setConnected(true);
+      };
 
       ws.onmessage = (event) => {
         try {
           const telemetry = JSON.parse(event.data);
           setCurrentReading(telemetry);
           setHistory((prev) => [...prev.slice(-49), telemetry]);
+
+          // ESP packet arrived: station is alive
+          setIsHardwareActive(true);
+
+          // Reset 12-second watchdog (ESP posts every 5s; 12s allows 2 dropped pings)
+          if (watchdogTimerRef.current) clearTimeout(watchdogTimerRef.current);
+          watchdogTimerRef.current = setTimeout(() => {
+            setIsHardwareActive(false);
+          }, 12000);
         } catch (e) {
           console.error("Malformed telemetry packet:", e);
         }
@@ -145,6 +167,8 @@ export function useAQI(deviceId) {
 
       ws.onclose = () => {
         setConnected(false);
+        setIsHardwareActive(false);
+        if (watchdogTimerRef.current) clearTimeout(watchdogTimerRef.current);
         reconnectTimer = setTimeout(connect, 3000);
       };
 
@@ -155,6 +179,7 @@ export function useAQI(deviceId) {
 
     return () => {
       clearTimeout(reconnectTimer);
+      if (watchdogTimerRef.current) clearTimeout(watchdogTimerRef.current);
       if (wsRef.current) wsRef.current.close();
     };
   }, [deviceId]);

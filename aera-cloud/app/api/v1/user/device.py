@@ -131,9 +131,8 @@ async def get_device_live_state(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Sub-millisecond read from Redis RAM for real-time telemetry and online/offline heartbeat.
-    """
+    device_id = device_id.strip().upper()  # <-- Crucial normalize step
+    
     device = await db.get(Device, device_id)
     if not device:
         raise HTTPException(
@@ -160,9 +159,11 @@ async def get_device_live_state(
         except Exception:
             pass
 
+    is_online = heartbeat == "online" or heartbeat == b"online"
+
     return {
         "device_id": device_id,
         "name": device.name,
-        "is_online": heartbeat == "online",
-        "telemetry": latest,
+        "is_online": bool(is_online),
+        "telemetry": latest if is_online else None,  # Don't return stale telemetry when offline
     }

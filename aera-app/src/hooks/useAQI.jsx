@@ -12,8 +12,9 @@ export function useAQI(deviceId) {
   const [loading, setLoading] = useState(true);
   const [isHardwareActive, setIsHardwareActive] = useState(false);
   const wsRef = useRef(null);
+  const watchdogTimerRef = useRef(null);
 
-  // 1. Primary Telemetry Pipeline (Ambient Regional vs. Hardware Node)
+  // 1. Primary Telemetry Pipeline
   useEffect(() => {
     let isMounted = true;
 
@@ -41,7 +42,6 @@ export function useAQI(deviceId) {
         };
         setCurrentReading(baseline);
 
-        // Fetch dynamic health advisory from Groq
         const rec = await monitoringService.getAmbientRecommendation({
           latitude: lat,
           longitude: lon,
@@ -73,7 +73,6 @@ export function useAQI(deviceId) {
     async function loadHardwareData(id) {
       try {
         setLoading(true);
-        setIsHardwareActive(true);
 
         const [latestResult, histResult, recResult] = await Promise.allSettled([
           monitoringService.getLatest(id),
@@ -84,8 +83,17 @@ export function useAQI(deviceId) {
         if (!isMounted) return;
 
         if (latestResult.status === "fulfilled" && latestResult.value) {
-          setCurrentReading(latestResult.value);
+          const reading = latestResult.value;
+          setCurrentReading(reading);
+          
+          // Check timestamp freshness: active only if received within last 20s
+          const readingTime = new Date(reading.timestamp || reading.created_at).getTime();
+          const isFresh = Date.now() - readingTime < 20000;
+          setIsHardwareActive(isFresh);
+        } else {
+          setIsHardwareActive(false);
         }
+
         if (histResult.status === "fulfilled" && histResult.value) {
           setHistory(histResult.value);
         }
@@ -94,6 +102,7 @@ export function useAQI(deviceId) {
         }
       } catch (err) {
         console.warn("Mobile hardware fetch exception:", err);
+        setIsHardwareActive(false);
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -102,12 +111,12 @@ export function useAQI(deviceId) {
     if (deviceId) {
       loadHardwareData(deviceId);
     } else {
-      // In native environments, pass fallback coordinates or wire navigator.geolocation
       loadAmbientData();
     }
 
     return () => {
       isMounted = false;
+      if (watchdogTimerRef.current) clearTimeout(watchdogTimerRef.current);
     };
   }, [deviceId]);
 
@@ -115,6 +124,7 @@ export function useAQI(deviceId) {
   useEffect(() => {
     if (!deviceId) {
       setConnected(false);
+      setIsHardwareActive(false);
       return;
     }
 
@@ -125,13 +135,24 @@ export function useAQI(deviceId) {
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
-      ws.onopen = () => setConnected(true);
+      ws.onopen = () => {
+        setConnected(true);
+      };
 
       ws.onmessage = (event) => {
         try {
           const telemetry = JSON.parse(event.data);
           setCurrentReading(telemetry);
           setHistory((prev) => [...prev.slice(-49), telemetry]);
+
+          // ESP packet arrived: station is alive
+          setIsHardwareActive(true);
+
+          // Reset 12-second watchdog (ESP posts every 5s; 12s allows 2 dropped pings)
+          if (watchdogTimerRef.current) clearTimeout(watchdogTimerRef.current);
+          watchdogTimerRef.current = setTimeout(() => {
+            setIsHardwareActive(false);
+          }, 12000);
         } catch (e) {
           console.warn("Failed to parse telemetry packet:", e);
         }
@@ -139,6 +160,8 @@ export function useAQI(deviceId) {
 
       ws.onclose = () => {
         setConnected(false);
+        setIsHardwareActive(false);
+        if (watchdogTimerRef.current) clearTimeout(watchdogTimerRef.current);
         retryTimeout = setTimeout(startSocket, 3500);
       };
 
@@ -149,6 +172,7 @@ export function useAQI(deviceId) {
 
     return () => {
       clearTimeout(retryTimeout);
+      if (watchdogTimerRef.current) clearTimeout(watchdogTimerRef.current);
       if (wsRef.current) wsRef.current.close();
     };
   }, [deviceId]);

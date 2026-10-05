@@ -6,16 +6,45 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Wind, UserCheck, History, Sliders } from "lucide-react";
 
-export default function Navbar({ onOpenPanel, isConnected = true, activePanel = null }) {
+export default function Navbar({
+  onOpenPanel,
+  isConnected = false,
+  hasHardware = false,
+  activePanel = null,
+}) {
   const { user } = useAuth();
   const userInitial =
     user?.full_name?.charAt(0).toUpperCase() ||
     user?.email?.charAt(0).toUpperCase() ||
     "A";
 
+  const getStatusBadge = () => {
+    if (!hasHardware) {
+      return {
+        label: "Ambient Grid",
+        dotClass: "bg-sky-500",
+        pulse: false,
+      };
+    }
+    if (isConnected) {
+      return {
+        label: "Live Stream",
+        dotClass: "bg-emerald-500",
+        pulse: true,
+      };
+    }
+    return {
+      label: "Station Offline",
+      dotClass: "bg-rose-500",
+      pulse: false,
+    };
+  };
+
+  const status = getStatusBadge();
+
   return (
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-border bg-card/95 px-4 sm:px-8 backdrop-blur-md shadow-xs">
-      {/* Brand: Clean 'AERA' without the trailing dot */}
+      {/* Brand */}
       <Link to="/" className="flex items-center gap-2.5 group">
         <div
           className="flex h-9 w-9 items-center justify-center rounded-xl text-primary-foreground shadow-xs group-hover:scale-105 transition-transform"
@@ -31,18 +60,17 @@ export default function Navbar({ onOpenPanel, isConnected = true, activePanel = 
       </Link>
 
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Connection status badge using chart tokens */}
+        {/* Dynamic status badge */}
         <Badge
           variant="outline"
           className="hidden sm:inline-flex items-center gap-1.5 border-border bg-muted/50 text-[11px] text-muted-foreground font-mono py-1 px-2.5"
         >
           <span
-            className={`h-1.5 w-1.5 rounded-full ${isConnected ? "animate-pulse" : ""}`}
-            style={{
-              backgroundColor: isConnected ? "var(--chart-3)" : "var(--chart-5)",
-            }}
+            className={`h-1.5 w-1.5 rounded-full ${status.dotClass} ${
+              status.pulse ? "animate-pulse" : ""
+            }`}
           />
-          {isConnected ? "Live Stream" : "Connecting"}
+          {status.label}
         </Badge>
 
         {/* Overview Tab Button */}

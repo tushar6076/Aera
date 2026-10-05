@@ -1,15 +1,55 @@
+// aera-app/src/components/layout/AppNavbar.jsx
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useDevice } from "../../hooks/useDevice";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { colors, typography, shadows } from "../../styles/theme";
-import { Wind, History, Sliders, Wifi, WifiOff } from "lucide-react-native";
+import { Wind, History, Sliders, Wifi, WifiOff, Globe } from "lucide-react-native";
 
 export default function AppNavbar({ isConnected = false, selectedDeviceId }) {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  
+  const { selectedDevice, deviceLiveState } = useDevice();
+  const activeDeviceId = selectedDeviceId ?? selectedDevice?.id;
+  const hasHardware = Boolean(activeDeviceId);
+
+  // Hardware is truly active only if Redis confirms it or live telemetry packets are actively arriving
+  const isOnline = hasHardware && (deviceLiveState ? deviceLiveState.is_online : isConnected);
+
+  const getStatusConfig = () => {
+    if (!hasHardware) {
+      return {
+        label: "Ambient",
+        color: colors.primary,
+        bgColor: colors.primaryLight,
+        borderColor: colors.primaryBorder,
+        Icon: Globe,
+      };
+    }
+    if (isOnline) {
+      return {
+        label: "Live",
+        color: colors.success,
+        bgColor: colors.successLight,
+        borderColor: colors.successBorder,
+        Icon: Wifi,
+      };
+    }
+    return {
+      label: "Offline",
+      color: colors.danger,
+      bgColor: colors.dangerLight,
+      borderColor: colors.dangerBorder,
+      Icon: WifiOff,
+    };
+  };
+
+  const status = getStatusConfig();
+  const StatusIcon = status.Icon;
 
   return (
     <View style={[styles.navbarWrapper, { paddingTop: insets.top }]}>
@@ -24,19 +64,16 @@ export default function AppNavbar({ isConnected = false, selectedDeviceId }) {
         </View>
 
         <View style={styles.actionsRow}>
-          <Badge variant="outline" style={styles.statusBadge}>
-            {isConnected ? (
-              <Wifi size={11} color={colors.success} />
-            ) : (
-              <WifiOff size={11} color={colors.danger} />
-            )}
-            <Text
-              style={[
-                styles.statusText,
-                { color: isConnected ? colors.success : colors.danger },
-              ]}
-            >
-              {isConnected ? "Live" : "Offline"}
+          <Badge
+            variant="outline"
+            style={[
+              styles.statusBadge,
+              { backgroundColor: status.bgColor, borderColor: status.borderColor },
+            ]}
+          >
+            <StatusIcon size={11} color={status.color} />
+            <Text style={[styles.statusText, { color: status.color }]}>
+              {status.label}
             </Text>
           </Badge>
 
@@ -44,7 +81,7 @@ export default function AppNavbar({ isConnected = false, selectedDeviceId }) {
             variant="outline"
             size="icon"
             onPress={() =>
-              navigation.navigate("History", { deviceId: selectedDeviceId })
+              navigation.navigate("History", { deviceId: activeDeviceId })
             }
             style={styles.iconBtn}
           >
@@ -104,11 +141,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   statusBadge: {
-    backgroundColor: colors.backgroundSubtle,
-    borderColor: colors.border,
     borderWidth: 1,
     paddingHorizontal: 8,
     paddingVertical: 4,
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
     gap: 5,
   },
   statusText: {
@@ -122,5 +160,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderColor: colors.border,
     borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

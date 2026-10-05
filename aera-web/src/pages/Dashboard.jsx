@@ -23,7 +23,7 @@ export default function Dashboard() {
     loading: devicesLoading,
     refreshDevices,
     claim,
-    release, // <-- 1. Extracted release from global provider
+    release,
   } = useDevice();
 
   const {
@@ -39,15 +39,17 @@ export default function Dashboard() {
 
   const [chatOpen, setChatOpen] = useState(false);
 
-  // 2. Bound complete context so SettingsPanel / AppLayout can trigger instant unlinks
+  // Hardware is active if recent packets arrived via WS or Redis heartbeat confirms it
+  const isStationActive = isHardwareActive || Boolean(deviceLiveState?.is_online);
+
   const deviceContext = {
     devices,
     selectedDevice,
     setSelectedDevice,
     claim,
-    release, // <-- Added here
+    release,
     refreshDevices,
-    connected,
+    connected: isStationActive,
     currentReading,
     history,
   };
@@ -64,7 +66,7 @@ export default function Dashboard() {
   }
 
   return (
-    <AppLayout isConnected={connected} deviceContext={deviceContext}>
+    <AppLayout isConnected={isStationActive} deviceContext={deviceContext}>
       <div className="space-y-6 max-w-7xl mx-auto w-full">
         {/* Top Header Controls: Device Switcher & AI Launcher */}
         <div className="flex flex-wrap items-center justify-between gap-4 pb-1">
@@ -95,7 +97,7 @@ export default function Dashboard() {
         <AQICard
           reading={currentReading}
           isConnected={connected}
-          isHardwareActive={isHardwareActive}
+          isHardwareActive={isStationActive}
           locationName={cityName}
         />
 
@@ -105,7 +107,7 @@ export default function Dashboard() {
             <PollutantCard
               pm2_5={currentReading?.pm2_5}
               pm10={currentReading?.pm10}
-              co={currentReading?.co} // <-- 3. Pass MQ-9 reading directly to the card
+              co={currentReading?.co}
             />
           </div>
           <div className="lg:col-span-1">

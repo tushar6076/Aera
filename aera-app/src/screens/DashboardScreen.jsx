@@ -56,10 +56,13 @@ export default function DashboardScreen({ navigation }) {
     });
   };
 
+  // Hardware is truly active only if packets are streaming or Redis heartbeat is active
+  const isStationActive = isHardwareActive || Boolean(deviceLiveState?.is_online);
+
   return (
     <View style={styles.screen}>
       <AppNavbar
-        isConnected={connected}
+        isConnected={isStationActive}
         selectedDeviceId={selectedDevice?.id}
       />
 
@@ -76,21 +79,22 @@ export default function DashboardScreen({ navigation }) {
           onSelectDevice={setSelectedDevice}
           onOpenPairModal={() => setClaimModalVisible(true)}
           locationName={cityName}
-          isOnline={deviceLiveState?.is_online}
+          isOnline={isStationActive}
         />
 
         {/* Primary AQI Card */}
         <AQICard
           reading={currentReading}
           isConnected={connected}
-          isHardwareActive={isHardwareActive}
+          isHardwareActive={isStationActive}
           locationName={cityName}
         />
 
-        {/* Particulate Breakdowns */}
+        {/* Particulate & Gas Breakdowns */}
         <PollutantCard
           pm2_5={currentReading?.pm2_5}
           pm10={currentReading?.pm10}
+          co={currentReading?.co}
         />
 
         {/* Dispersion & Circulation Status */}

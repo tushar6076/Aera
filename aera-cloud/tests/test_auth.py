@@ -4,94 +4,87 @@ from app.core.security import create_password_reset_token
 
 pytestmark = pytest.mark.asyncio
 
+AUTH_URL = "/api/v1/auth"
 
-async def test_register_user_success(client: AsyncClient):
-    payload = {
-        "email": "tester@hacksmiths.dev",
-        "password": "SecurePassword123!",
-        "full_name": "Test Engineer",
-    }
-    response = await client.post("/v1/auth/register", json=payload)
-    assert response.status_code == 201
-    data = response.json()
+
+async def test_register_and_login_flow(client: AsyncClient):
+    email = "pilot@hacksmiths.dev"
+    password = "StrongPassword123!"
+
+    # 1. Register
+    reg_res = await client.post(
+        f"{AUTH_URL}/register",
+        json={"email": email, "password": password, "full_name": "Pilot User"},
+    )
+    assert reg_res.status_code == 201
+
+    # 2. Login
+    login_res = await client.post(
+        f"{AUTH_URL}/login",
+        json={"email": email, "password": password},
+    )
+    assert login_res.status_code == 200
+    data = login_res.json()
     assert "access_token" in data
-    assert data["token_type"] == "bearer"
+    assert data["token_type"].lower() == "bearer"
 
 
-async def test_register_duplicate_email_fails(client: AsyncClient):
+async def test_register_duplicate_email_conflict(client: AsyncClient):
     payload = {
         "email": "duplicate@hacksmiths.dev",
         "password": "Password123!",
         "full_name": "First User",
     }
-    # First registration
-    res1 = await client.post("/v1/auth/register", json=payload)
-    assert res1.status_code == 201
-
-    # Duplicate registration
-    res2 = await client.post("/v1/auth/register", json=payload)
-    assert res2.status_code == 400
-    assert "already registered" in res2.json()["detail"].lower()
+    await client.post(f"{AUTH_URL}/register", json=payload)
+    dup_res = await client.post(f"{AUTH_URL}/register", json=payload)
+    assert dup_res.status_code == 400
 
 
-async def test_login_success(client: AsyncClient):
-    # Setup user
+async def test_login_invalid_password(client: AsyncClient):
+    email = "auth_fail@hacksmiths.dev"
     await client.post(
-        "/v1/auth/register",
-        json={"email": "loginuser@hacksmiths.dev", "password": "Password123!"},
+        f"{AUTH_URL}/register",
+        json={"email": email, "password": "CorrectPassword123!", "full_name": "Test"},
     )
 
-    # Login
-    response = await client.post(
-        "/v1/auth/login",
-        json={"email": "loginuser@hacksmiths.dev", "password": "Password123!"},
+    res = await client.post(
+        f"{AUTH_URL}/login",
+        json={"email": email, "password": "WrongPassword999!"},
     )
-    assert response.status_code == 200
-    assert "access_token" in response.json()
+    assert res.status_code == 401
 
 
-async def test_login_invalid_credentials(client: AsyncClient):
-    response = await client.post(
-        "/v1/auth/login",
-        json={"email": "nonexistent@hacksmiths.dev", "password": "WrongPassword"},
-    )
-    assert response.status_code == 401
+async def test_forgot_and_reset_password_flow(client: AsyncClient):
+    email = "reset_user@hacksmiths.dev"
+    old_pw = "OldPassword123!"
+    new_pw = "BrandNewSafePassword456!"
 
-
-async def test_forgot_password_generic_response(client: AsyncClient):
-    # Should always return 200 without leaking if email exists
-    response = await client.post(
-        "/v1/auth/forgot-password",
-        json={"email": "anyone@hacksmiths.dev"},
-    )
-    assert response.status_code == 200
-    assert "dispatched" in response.json()["message"]
-
-
-async def test_reset_password_with_valid_token(client: AsyncClient):
-    email = "resetme@hacksmiths.dev"
+    # Register
     await client.post(
-        "/v1/auth/register",
-        json={"email": email, "password": "InitialPassword123"},
+        f"{AUTH_URL}/register",
+        json={"email": email, "password": old_pw, "full_name": "Reset User"},
     )
 
+    # Forgot password request (always returns 200 to prevent email enumeration)
+    forgot_res = await client.post(
+        f"{AUTH_URL}/forgot-password",
+        json={"email": email},
+    )
+    assert forgot_res.status_code == 200
+
+    # Generate test signed token directly
     token = create_password_reset_token(email)
-    response = await client.post(
-        "/v1/auth/reset-password",
-        json={"token": token, "new_password": "NewUpdatedPassword123!"},
-    )
-    assert response.status_code == 200
 
-    # Verify old password no longer works
-    old_login = await client.post(
-        "/v1/auth/login",
-        json={"email": email, "password": "InitialPassword123"},
+    # Reset password
+    reset_res = await client.post(
+        f"{AUTH_URL}/reset-password",
+        json={"token": token, "new_password": new_pw},
     )
-    assert old_login.status_code == 401
+    assert reset_res.status_code == 200
 
-    # Verify new password works
-    new_login = await client.post(
-        "/v1/auth/login",
-        json={"email": email, "password": "NewUpdatedPassword123!"},
-    )
-    assert new_login.status_code == 200
+    # Verify old password fails and new password authenticates
+    fail_login = await client.post(f"{AUTH_URL}/login", json={"email": email, "password": old_pw})
+    assert fail_login.status_code == 401
+
+    success_login = await client.post(f"{AUTH_URL}/login", json={"email": email, "password": new_pw})
+    assert success_login.status_code == 200

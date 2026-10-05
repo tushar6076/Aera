@@ -16,7 +16,7 @@ async def process_telemetry(
 ) -> dict | None:
     """
     Validates sensor values, computes multi-pollutant NAQI, updates Redis hot
-    telemetry/heartbeat, persists reading to PostgreSQL, and returns enriched telemetry.
+    telemetry/heartbeat with TTL, persists reading to DB, and returns enriched telemetry.
     """
     device_id = device_id.strip().upper()
 
@@ -41,8 +41,8 @@ async def process_telemetry(
     # Bi-directional calculation across all available pollutants
     aqi, category = compute_naqi(pm2_5=pm2_5, pm10=pm10, co=co)
 
-    # Threshold alerts: CO hazard or severe overall AQI
-    co_alert = co >= 350.0
+    # Threshold alerts: calibrated CO PPM hazard (>= 50 PPM) or severe AQI (> 300)
+    co_alert = co >= 50.0
     buzzer_alert = (aqi > 300) or co_alert
 
     enriched = {
@@ -58,12 +58,14 @@ async def process_telemetry(
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
-    # 1. Update in-memory Redis cache
+    # 1. Update in-memory Redis cache with strict TTL
     redis = get_redis_client()
     if redis:
         try:
+            # 15s expiration on heartbeat (ESP32 transmits every 5s)
             await redis.set(f"device:{device_id}:heartbeat", "online", ex=15)
-            await redis.set(f"device:{device_id}:latest", json.dumps(enriched))
+            # 60s expiration on latest telemetry snapshot
+            await redis.set(f"device:{device_id}:latest", json.dumps(enriched), ex=60)
         except Exception as e:
             logger.error(f"Redis cache write failed for '{device_id}': {e}")
 
