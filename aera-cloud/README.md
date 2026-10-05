@@ -10,7 +10,7 @@ Built with **FastAPI**, **SQLAlchemy 2.0 (Asyncpg)**, **PostgreSQL (Neon)**, **G
 
 - **Dual-Gateway Separation**:
   - `/api/device/ws/{device_id}`: High-throughput ingestion gateway authenticated via hardware pre-shared key (PSK). Computes real-time India NAQI, persists readings, and replies with immediate buzzer flags.
-  - `/api/v1/`: Consumer-facing REST & WebSocket endpoints serving authenticated Web (`aera-web`) and Mobile (`aera-app`) clients.
+  - `/v1/`: Consumer-facing REST & WebSocket endpoints serving authenticated Web (`aera-web`) and Mobile (`aera-app`) clients.
 - **Atmospheric Precaution Engine**: Relies on Groq LLM inference (`app/services/ai/`) wrapped with deterministic guardrails (`safety.py`) to provide lifestyle guidance without clinical diagnostic risks.
 - **Reliable Email Dispatch**: Non-blocking SMTP deliveries via Titan Email over SSL (Port 465) for password reset flows.
 - **Automated Verification**: Complete asynchronous test suite with 100% green pass rate utilizing an isolated in-memory SQLite engine.
@@ -25,7 +25,7 @@ aera-cloud/
 ├── app/
 │   ├── api/
 │   │   ├── device/          # Hardware WebSocket endpoint (/api/device/ws)
-│   │   ├── v1/              # Auth, User, and Telemetry routes (/api/v1/...)
+│   │   ├── v1/              # Auth, User, and Telemetry routes (/v1/...)
 │   │   └── router.py        # Centralized router mount point
 │   ├── core/                # Config, DB engine, security, logging
 │   ├── db/

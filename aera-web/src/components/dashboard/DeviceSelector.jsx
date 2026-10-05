@@ -1,12 +1,15 @@
 // aera-web/src/components/dashboard/DeviceSelector.jsx
+
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { deviceService } from "@/services/device";
 import {
   Cpu,
   Compass,
   ChevronDown,
   Plus,
   Check,
+  Unlink,
 } from "lucide-react";
 import ClaimDeviceModal from "./ClaimDeviceModal";
 
@@ -19,8 +22,29 @@ export default function DeviceSelector({
 }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [claimModalOpen, setClaimModalOpen] = useState(false);
+  const [unclaiming, setUnclaiming] = useState(false);
 
   const isOnline = deviceLiveState?.is_online ?? false;
+
+  const handleUnclaim = async (e, devId) => {
+    e.stopPropagation();
+    if (!window.confirm(`Unlink and unclaim hardware node "${devId}"?`)) return;
+
+    try {
+      setUnclaiming(true);
+      await deviceService.releaseDevice(devId);
+      if (selectedDevice?.id === devId) {
+        onSelectDevice(null);
+      }
+      if (onDeviceClaimed) {
+        await onDeviceClaimed();
+      }
+    } catch (err) {
+      alert(err.response?.data?.detail || "Failed to release device.");
+    } finally {
+      setUnclaiming(false);
+    }
+  };
 
   return (
     <>
@@ -66,7 +90,7 @@ export default function DeviceSelector({
                         ? "var(--chart-3)"
                         : "var(--muted-foreground)",
                     }}
-                    title={isOnline ? "Online (Redis Heartbeat Active)" : "Offline"}
+                    title={isOnline ? "Online (Active Telemetry)" : "Offline"}
                   />
                 )}
               </div>
@@ -91,15 +115,13 @@ export default function DeviceSelector({
         {/* Dropdown Menu Container */}
         {dropdownOpen && (
           <>
-            {/* Click-away backdrop overlay */}
             <div
               className="fixed inset-0 z-40"
               onClick={() => setDropdownOpen(false)}
             />
 
-            {/* Solid Dropdown Popover */}
             <div
-              className="absolute left-0 mt-2 w-72 rounded-3xl border border-border p-2 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-100"
+              className="absolute left-0 mt-2 w-80 rounded-3xl border border-border p-2 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-100"
               style={{
                 backgroundColor: "var(--card)",
                 opacity: 1,
@@ -128,7 +150,7 @@ export default function DeviceSelector({
                   <div>
                     <p className="text-xs font-semibold text-foreground">Ambient Regional Grid</p>
                     <p className="text-[10px] text-muted-foreground">
-                      Outdoor weather & satellite AQI
+                      Outdoor weather & satellite air quality
                     </p>
                   </div>
                 </div>
@@ -137,7 +159,6 @@ export default function DeviceSelector({
 
               <div className="my-1.5 border-t border-border" />
 
-              {/* Hardware Device Options */}
               <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                 Paired ESP32 Nodes
               </div>
@@ -151,36 +172,47 @@ export default function DeviceSelector({
                   {devices.map((dev) => {
                     const isSelected = selectedDevice?.id === dev.id;
                     return (
-                      <button
+                      <div
                         key={dev.id}
-                        type="button"
                         onClick={() => {
                           onSelectDevice(dev);
                           setDropdownOpen(false);
                         }}
-                        className="w-full flex items-center justify-between p-2.5 rounded-2xl text-left transition-colors cursor-pointer border"
+                        className="w-full flex items-center justify-between p-2.5 rounded-2xl transition-colors cursor-pointer border hover:bg-muted/30"
                         style={{
                           backgroundColor: isSelected ? "var(--accent)" : "var(--card)",
                           borderColor: isSelected ? "var(--primary-light)" : "transparent",
                           color: "var(--foreground)",
                         }}
                       >
-                        <div className="flex items-center gap-2.5">
+                        <div className="flex items-center gap-2.5 min-w-0">
                           <Cpu
                             className="w-4 h-4 shrink-0"
                             style={{
                               color: isSelected ? "var(--primary)" : "var(--muted-foreground)",
                             }}
                           />
-                          <div>
-                            <p className="text-xs font-semibold text-foreground">{dev.name}</p>
+                          <div className="truncate">
+                            <p className="text-xs font-semibold text-foreground truncate">{dev.name}</p>
                             <p className="text-[10px] font-mono text-muted-foreground">
                               {dev.id}
                             </p>
                           </div>
                         </div>
-                        {isSelected && <Check className="w-4 h-4 text-primary shrink-0" />}
-                      </button>
+
+                        <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                          {isSelected && <Check className="w-4 h-4 text-primary shrink-0" />}
+                          <button
+                            type="button"
+                            title="Unpair Node"
+                            disabled={unclaiming}
+                            onClick={(e) => handleUnclaim(e, dev.id)}
+                            className="p-1 hover:bg-destructive/10 text-muted-foreground hover:text-destructive rounded-lg transition-colors cursor-pointer"
+                          >
+                            <Unlink className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
@@ -188,7 +220,6 @@ export default function DeviceSelector({
 
               <div className="my-1.5 border-t border-border" />
 
-              {/* Pair New Node Trigger */}
               <button
                 type="button"
                 onClick={() => {
@@ -206,7 +237,6 @@ export default function DeviceSelector({
         )}
       </div>
 
-      {/* Claim / Pairing Dialog */}
       <ClaimDeviceModal
         open={claimModalOpen}
         onOpenChange={setClaimModalOpen}

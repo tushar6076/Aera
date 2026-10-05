@@ -1,5 +1,3 @@
-# app/services/device/telemetry.py
-
 import json
 from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,25 +15,35 @@ async def process_telemetry(
     session: AsyncSession | None = None,
 ) -> dict | None:
     """
-    Validates sensor values, computes NAQI, updates Redis hot telemetry/heartbeat,
-    persists reading to PostgreSQL, and returns enriched telemetry with buzzer status.
+    Validates sensor values, computes multi-pollutant NAQI, updates Redis hot
+    telemetry/heartbeat, persists reading to PostgreSQL, and returns enriched telemetry.
     """
+    device_id = device_id.strip().upper()
+
     if not validate_sensor_payload(data):
-        logger.warning(f"Rejected invalid telemetry from '{device_id}': {data}")
+        logger.warning(f"Validation warning on telemetry from '{device_id}': {data}")
+
+    # Standardize input keys
+    pm2_5_val = data.get("pm2_5") if data.get("pm2_5") is not None else data.get("pm25", 0.0)
+    pm10_val = data.get("pm10", 0.0)
+    co_val = data.get("co", 0.0)
+
+    try:
+        pm2_5 = float(pm2_5_val or 0.0)
+        pm10 = float(pm10_val or 0.0)
+        co = float(co_val or 0.0)
+        temp = float(data.get("temperature")) if data.get("temperature") is not None else None
+        hum = float(data.get("humidity")) if data.get("humidity") is not None else None
+    except (ValueError, TypeError) as err:
+        logger.warning(f"Rejected unparsable telemetry from '{device_id}': {err}")
         return None
 
-    pm2_5 = float(data.get("pm2_5", 0.0))
-    pm10 = float(data.get("pm10", 0.0))
-    co = float(data.get("co", 0.0))
-    temp = float(data.get("temperature")) if data.get("temperature") is not None else None
-    hum = float(data.get("humidity")) if data.get("humidity") is not None else None
+    # Bi-directional calculation across all available pollutants
+    aqi, category = compute_naqi(pm2_5=pm2_5, pm10=pm10, co=co)
 
-    # Calculate standard AQI based on particulates
-    aqi, category = compute_naqi(pm2_5, pm10)
-
-    # MQ-9 threshold alert: PPM >= 350.0 indicates dangerous CO/gas levels
+    # Threshold alerts: CO hazard or severe overall AQI
     co_alert = co >= 350.0
-    buzzer_alert = (aqi > 200) or co_alert
+    buzzer_alert = (aqi > 300) or co_alert
 
     enriched = {
         "device_id": device_id,
@@ -54,7 +62,6 @@ async def process_telemetry(
     redis = get_redis_client()
     if redis:
         try:
-            # 15s TTL: Missing 3 transmissions marks the node as offline
             await redis.set(f"device:{device_id}:heartbeat", "online", ex=15)
             await redis.set(f"device:{device_id}:latest", json.dumps(enriched))
         except Exception as e:
@@ -75,11 +82,11 @@ async def process_telemetry(
             s.add(dev)
             await s.flush()
 
-            if redis:
-                try:
-                    await redis.set(f"device:{device_id}:unclaimed", "true", ex=900)
-                except Exception:
-                    pass
+        if dev.owner_id is None and redis:
+            try:
+                await redis.set(f"device:{device_id}:unclaimed", "true", ex=900)
+            except Exception:
+                pass
 
         record = Reading(
             device_id=device_id,
@@ -94,10 +101,13 @@ async def process_telemetry(
         s.add(record)
         await s.commit()
 
-    if session:
-        await _save_record(session)
-    else:
-        async with AsyncSessionLocal() as fresh_session:
-            await _save_record(fresh_session)
+    try:
+        if session:
+            await _save_record(session)
+        else:
+            async with AsyncSessionLocal() as fresh_session:
+                await _save_record(fresh_session)
+    except Exception as e:
+        logger.error(f"Database persist failed for '{device_id}': {e}")
 
     return enriched

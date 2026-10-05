@@ -1,3 +1,5 @@
+# app/services/ai/recommendation.py
+
 import json
 from app.core.config import settings
 from app.core.logging import logger
@@ -37,7 +39,7 @@ async def generate_aqi_precaution(
     resolved_aqi = aqi if aqi is not None else _calculate_fallback_aqi(pm2_5, pm10)
     resolved_cat = category or ("Good" if resolved_aqi <= 50 else "Moderate" if resolved_aqi <= 100 else "Unhealthy")
 
-    # Fallback if API key is missing
+    # Offline / missing credentials fallback
     if not settings.GROQ_API_KEY:
         tone = "emerald" if resolved_aqi <= 50 else "sky" if resolved_aqi <= 100 else "rose"
         return StructuredRecommendation(
@@ -49,9 +51,9 @@ async def generate_aqi_precaution(
             precautions=[
                 "Maintain standard indoor air filtration.",
                 "Ventilate living spaces during low-particulate hours.",
-                "Stay hydrated and monitor breathing ease outdoors."
+                "Stay hydrated and monitor breathing ease outdoors.",
             ],
-            vulnerable_groups_warning="Individuals with respiratory sensitivities should moderate high-intensity outdoor activities."
+            vulnerable_groups_warning="Individuals with respiratory sensitivities should moderate high-intensity outdoor activities.",
         )
 
     client = get_groq_client()
@@ -74,7 +76,7 @@ async def generate_aqi_precaution(
                 {"role": "user", "content": user_prompt},
             ],
             temperature=0.3,
-            max_tokens=400,
+            max_tokens=1024,  # <-- Raised from 400 to prevent JSON truncation
             response_format={"type": "json_object"},
         )
         content = response.choices[0].message.content or "{}"
@@ -100,7 +102,7 @@ async def generate_aqi_precaution(
             summary=f"Automated evaluation: conditions currently ranked {resolved_cat}.",
             precautions=[
                 "Limit prolonged heavy aerobic exposure during peak hours.",
-                "Ensure indoor HEPA filters or fresh air circulation are running."
+                "Ensure indoor HEPA filters or fresh air circulation are running.",
             ],
-            vulnerable_groups_warning="Sensitive groups should observe breathing comfort during travel."
+            vulnerable_groups_warning="Sensitive groups should observe breathing comfort during travel.",
         )

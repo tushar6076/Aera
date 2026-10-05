@@ -1,8 +1,10 @@
 // aera-web/src/hooks/useDevice.jsx
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, createContext, useContext } from "react";
 import { deviceService } from "../services/device";
 
-export function useDevice() {
+const DeviceContext = createContext(null);
+
+export function DeviceProvider({ children }) {
   const [devices, setDevices] = useState([]);
   const [unclaimedDevices, setUnclaimedDevices] = useState([]);
   const [selectedDevice, setSelectedDevice] = useState(null);
@@ -15,16 +17,16 @@ export function useDevice() {
     try {
       setLoading(true);
       const list = await deviceService.getMyDevices();
-      setDevices(list || []);
+      const deviceList = list || [];
+      setDevices(deviceList);
 
-      if (list && list.length > 0) {
-        setSelectedDevice((prev) => {
-          if (!prev) return list[0];
-          return list.find((d) => d.id === prev.id) || list[0];
-        });
-      } else {
-        setSelectedDevice(null);
-      }
+      setSelectedDevice((prev) => {
+        if (deviceList.length === 0) return null;
+        if (!prev) return deviceList[0];
+        // Retain current selection if it still exists; otherwise fallback to first or null
+        const stillExists = deviceList.find((d) => d.id === prev.id);
+        return stillExists || deviceList[0];
+      });
     } catch (err) {
       console.error("Failed fetching paired devices:", err);
     } finally {
@@ -78,17 +80,19 @@ export function useDevice() {
     const dev = await deviceService.claimDevice(deviceId, name);
     await fetchDevices();
     setSelectedDevice(dev);
-    // Remove from local unclaimed cache immediately
     setUnclaimedDevices((prev) => prev.filter((id) => id !== deviceId));
     return dev;
   };
 
   const release = async (deviceId) => {
     await deviceService.releaseDevice(deviceId);
+    
+    // Explicitly reset selection to Ambient if the released node is currently active
+    setSelectedDevice((current) => (current?.id === deviceId ? null : current));
     await fetchDevices();
   };
 
-  return {
+  const value = {
     devices,
     unclaimedDevices,
     selectedDevice,
@@ -101,6 +105,20 @@ export function useDevice() {
     claim,
     release,
   };
+
+  return (
+    <DeviceContext.Provider value={value}>
+      {children}
+    </DeviceContext.Provider>
+  );
+}
+
+export function useDevice() {
+  const context = useContext(DeviceContext);
+  if (!context) {
+    throw new Error("useDevice must be used within a DeviceProvider");
+  }
+  return context;
 }
 
 export default useDevice;

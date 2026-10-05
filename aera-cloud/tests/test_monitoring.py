@@ -72,7 +72,7 @@ async def test_get_latest_reading_endpoint(client: AsyncClient, db_session: Asyn
     db_session.add(reading)
     await db_session.commit()
 
-    response = await client.get(f"/api/v1/monitoring/latest/{device_id}")
+    response = await client.get(f"/v1/monitoring/latest/{device_id}")
     assert response.status_code == 200
     data = response.json()
     assert data["device_id"] == device_id
@@ -82,5 +82,5 @@ async def test_get_latest_reading_endpoint(client: AsyncClient, db_session: Asyn
 
 @pytest.mark.asyncio
 async def test_get_latest_reading_not_found(client: AsyncClient):
-    response = await client.get("/api/v1/monitoring/latest/non_existent_node")
+    response = await client.get("/v1/monitoring/latest/non_existent_node")
     assert response.status_code == 404

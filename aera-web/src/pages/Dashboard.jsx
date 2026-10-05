@@ -23,6 +23,7 @@ export default function Dashboard() {
     loading: devicesLoading,
     refreshDevices,
     claim,
+    release, // <-- 1. Extracted release from global provider
   } = useDevice();
 
   const {
@@ -38,11 +39,13 @@ export default function Dashboard() {
 
   const [chatOpen, setChatOpen] = useState(false);
 
+  // 2. Bound complete context so SettingsPanel / AppLayout can trigger instant unlinks
   const deviceContext = {
     devices,
     selectedDevice,
     setSelectedDevice,
     claim,
+    release, // <-- Added here
     refreshDevices,
     connected,
     currentReading,
@@ -96,12 +99,13 @@ export default function Dashboard() {
           locationName={cityName}
         />
 
-        {/* Particulates & Outdoor Dispersion Physics */}
+        {/* Particulates, CO & Outdoor Dispersion Physics */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             <PollutantCard
               pm2_5={currentReading?.pm2_5}
               pm10={currentReading?.pm10}
+              co={currentReading?.co} // <-- 3. Pass MQ-9 reading directly to the card
             />
           </div>
           <div className="lg:col-span-1">

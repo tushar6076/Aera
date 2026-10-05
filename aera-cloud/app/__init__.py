@@ -47,7 +47,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Mount unified API routers (/api/device and /api/v1)
+    # Mount unified API routers (/api/device and /v1)
     app.include_router(api_router, prefix="/api")
 
     @app.get("/", tags=["General"])

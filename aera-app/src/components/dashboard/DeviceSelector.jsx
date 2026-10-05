@@ -1,17 +1,44 @@
 // aera-app/src/components/dashboard/DeviceSelector.jsx
 import React from "react";
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from "react-native";
 import { colors, typography, shadows } from "../../styles/theme";
-import { Cpu, Compass, Plus } from "lucide-react-native";
+import { Cpu, Compass, Plus, Unlink } from "lucide-react-native";
+import { deviceService } from "../../services/device";
 
 export default function DeviceSelector({
   devices = [],
   selectedDevice = null,
   onSelectDevice,
   onOpenPairModal,
+  onDeviceUnlinked,
   locationName = "Regional",
   isOnline = false,
 }) {
+  const handleUnlink = (deviceId, deviceName) => {
+    Alert.alert(
+      "Unlink Station",
+      `Are you sure you want to release "${deviceName || deviceId}"? Telemetry will stop streaming to your account.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Unlink",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deviceService.releaseDevice(deviceId);
+              if (selectedDevice?.id === deviceId) {
+                onSelectDevice(null);
+              }
+              if (onDeviceUnlinked) onDeviceUnlinked();
+            } catch (err) {
+              Alert.alert("Error", err.response?.data?.detail || "Failed to release node.");
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <View style={styles.wrapper}>
       <ScrollView
@@ -64,6 +91,7 @@ export default function DeviceSelector({
               >
                 {d.name || d.id}
               </Text>
+              
               {active && (
                 <View
                   style={[
@@ -72,6 +100,15 @@ export default function DeviceSelector({
                   ]}
                 />
               )}
+
+              {/* Unlink button within the pill */}
+              <TouchableOpacity
+                onPress={() => handleUnlink(d.id, d.name)}
+                style={styles.unlinkIconBtn}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              >
+                <Unlink size={11} color={colors.textDim} />
+              </TouchableOpacity>
             </TouchableOpacity>
           );
         })}
@@ -128,6 +165,10 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
+  },
+  unlinkIconBtn: {
+    marginLeft: 2,
+    padding: 2,
   },
   addPill: {
     flexDirection: "row",

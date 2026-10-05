@@ -1,12 +1,10 @@
-# app/api/device/dependencies.py
-
 from typing import Optional
 from fastapi import Header, HTTPException, Query, WebSocket, status, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.config import settings
-from app.core.database import get_db
+from app.core.database import get_db, get_redis_client
 from app.db.models.device import Device, DeviceVisibility
 
 
@@ -15,10 +13,6 @@ async def verify_device_http_auth(
     x_device_id: Optional[str] = Header(None, alias="X-Device-ID"),
     db: AsyncSession = Depends(get_db),
 ) -> Device:
-    """
-    Validates Bearer pre-shared token and resolves/provisions
-    the Device model for HTTP ingestion requests.
-    """
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -38,20 +32,32 @@ async def verify_device_http_auth(
             detail="Missing required X-Device-ID header.",
         )
 
+    clean_device_id = x_device_id.strip().upper()
+
     # Fetch or auto-register hardware node in Postgres
-    result = await db.execute(select(Device).where(Device.id == x_device_id))
+    result = await db.execute(select(Device).where(Device.id == clean_device_id))
     device = result.scalars().first()
 
     if not device:
         device = Device(
-            id=x_device_id,
-            name=f"Node {x_device_id[-6:]}",
+            id=clean_device_id,
+            name=f"Node {clean_device_id[-6:] if len(clean_device_id) >= 6 else clean_device_id}",
             visibility=DeviceVisibility.PUBLIC,
             is_active=True,
+            owner_id=None,
         )
         db.add(device)
         await db.commit()
         await db.refresh(device)
+
+    # Keep unclaimed node visible in discovery cache
+    if device.owner_id is None:
+        redis = get_redis_client()
+        if redis:
+            try:
+                await redis.set(f"device:{clean_device_id}:unclaimed", "true", ex=900)
+            except Exception:
+                pass
 
     return device
 
@@ -68,4 +74,4 @@ async def verify_device_ws_auth(
     if key != settings.DEVICE_PRESHARED_KEY:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return None
-    return device_id
+    return device_id.strip().upper()

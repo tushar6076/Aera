@@ -1,4 +1,4 @@
-# app/api/v1/ai.py
+# app/v1/ai.py
 
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status

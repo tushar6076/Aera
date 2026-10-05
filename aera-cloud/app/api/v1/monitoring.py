@@ -1,4 +1,4 @@
-# app/api/v1/monitoring.py
+# app/v1/monitoring.py
 
 import json
 from datetime import datetime, timezone

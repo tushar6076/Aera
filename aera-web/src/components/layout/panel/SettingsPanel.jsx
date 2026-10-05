@@ -1,10 +1,18 @@
-// aera-web/src/components/layout/panel/SettingsPanel.jsx
+// aera-web/src/components/settings/SettingsPanel.jsx
 import React, { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useDevice } from "@/hooks/useDevice";
 import { userService } from "@/services/user";
-import { deviceService } from "@/services/device";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   User,
   Mail,
@@ -14,18 +22,36 @@ import {
   Save,
   LogOut,
   Cpu,
+  UserX,
+  AlertTriangle,
 } from "lucide-react";
 
 export default function SettingsPanel({ deviceContext, onClose }) {
   const { user, setUser, logout } = useAuth();
-  const { devices = [], refreshDevices } = deviceContext;
+  
+  // Use global context directly, or fall back to deviceContext prop if provided
+  const globalDevice = useDevice();
+  const activeDeviceContext = deviceContext || globalDevice;
+  const { 
+    devices = [], 
+    selectedDevice, 
+    setSelectedDevice, 
+    release, 
+    refreshDevices 
+  } = activeDeviceContext;
 
   const [fullName, setFullName] = useState(user?.full_name || "");
   const [email, setEmail] = useState(user?.email || "");
   const [saving, setSaving] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [releasingId, setReleasingId] = useState(null);
+
+  // Dialog State
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [confirmInput, setConfirmInput] = useState("");
+  const [deleteDialogError, setDeleteDialogError] = useState("");
 
   const handleProfileSave = async (e) => {
     e.preventDefault();
@@ -50,12 +76,41 @@ export default function SettingsPanel({ deviceContext, onClose }) {
     if (!window.confirm(`Unlink hardware node "${deviceId}" from your account?`)) return;
     setReleasingId(deviceId);
     try {
-      await deviceService.releaseDevice(deviceId);
-      await refreshDevices();
+      if (release) {
+        await release(deviceId);
+      }
+      if (selectedDevice?.id === deviceId && setSelectedDevice) {
+        setSelectedDevice(null);
+      }
+      if (refreshDevices) {
+        await refreshDevices();
+      }
     } catch (err) {
       alert(err.response?.data?.detail || "Failed to unlink device.");
     } finally {
       setReleasingId(null);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (confirmInput.trim() !== "DELETE") {
+      setDeleteDialogError('Please type "DELETE" exactly to confirm.');
+      return;
+    }
+
+    setDeletingAccount(true);
+    setDeleteDialogError("");
+    try {
+      await userService.deleteAccount();
+      setDeleteDialogOpen(false);
+      onClose();
+      logout();
+    } catch (err) {
+      setDeleteDialogError(
+        err.response?.data?.detail || "Failed to delete account. Please try again."
+      );
+    } finally {
+      setDeletingAccount(false);
     }
   };
 
@@ -140,7 +195,9 @@ export default function SettingsPanel({ deviceContext, onClose }) {
         </span>
 
         {devices.length === 0 ? (
-          <p className="text-xs text-muted-foreground italic">No claimed hardware stations associated with this account.</p>
+          <p className="text-xs text-muted-foreground italic">
+            No claimed hardware stations associated with this account.
+          </p>
         ) : (
           devices.map((d) => (
             <div
@@ -178,20 +235,104 @@ export default function SettingsPanel({ deviceContext, onClose }) {
         )}
       </div>
 
-      {/* Sign Out */}
-      <div className="pt-4 border-t border-border">
+      {/* Danger Zone: Sign Out & Account Deletion */}
+      <div className="pt-4 border-t border-border space-y-2">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block">
+          Session & Account Actions
+        </span>
+
         <Button
+          type="button"
           variant="outline"
           onClick={() => {
             onClose();
             logout();
           }}
-          className="w-full border-destructive/30 text-destructive bg-destructive/10 hover:bg-destructive/20 text-xs font-semibold gap-2 rounded-xl h-10 transition-colors cursor-pointer"
+          className="w-full border-border hover:bg-muted text-foreground text-xs font-semibold gap-2 rounded-xl h-10 transition-colors cursor-pointer"
         >
-          <LogOut className="w-3.5 h-3.5 text-destructive" />
+          <LogOut className="w-3.5 h-3.5 text-muted-foreground" />
           <span>Sign Out of Aera</span>
         </Button>
+
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            setConfirmInput("");
+            setDeleteDialogError("");
+            setDeleteDialogOpen(true);
+          }}
+          className="w-full border-destructive/30 text-destructive bg-destructive/10 hover:bg-destructive/20 text-xs font-semibold gap-2 rounded-xl h-10 transition-colors cursor-pointer"
+        >
+          <UserX className="w-3.5 h-3.5 text-destructive" />
+          <span>Delete Account Permanently</span>
+        </Button>
       </div>
+
+      {/* Confirmation Dialog for Permanent Account Deletion */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-md rounded-3xl border border-border bg-card text-foreground p-6 shadow-2xl">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2.5 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive">
+                <AlertTriangle className="w-5 h-5 text-destructive" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-bold text-foreground">
+                  Permanently Delete Account
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground">
+                  This action cannot be undone.
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2 text-xs text-muted-foreground leading-relaxed">
+            <p>
+              Deleting your account will permanently purge your profile, remove all session keys,
+              and automatically release all paired Aera Station nodes back to unclaimed status.
+            </p>
+            <p className="font-medium text-foreground">
+              To proceed, please type <span className="font-mono font-bold text-destructive">DELETE</span> below:
+            </p>
+            <Input
+              type="text"
+              placeholder='Type "DELETE" to confirm'
+              value={confirmInput}
+              onChange={(e) => {
+                setConfirmInput(e.target.value);
+                setDeleteDialogError("");
+              }}
+              className="bg-muted/40 border-border font-mono text-xs uppercase rounded-xl"
+              autoFocus
+            />
+            {deleteDialogError && (
+              <p className="text-xs text-destructive font-medium">{deleteDialogError}</p>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0 mt-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={deletingAccount}
+              onClick={() => setDeleteDialogOpen(false)}
+              className="rounded-xl text-xs h-9"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={confirmInput.trim() !== "DELETE" || deletingAccount}
+              onClick={handleConfirmDelete}
+              className="rounded-xl bg-destructive hover:bg-destructive/90 text-destructive-foreground text-xs font-semibold h-9 shadow-xs"
+            >
+              {deletingAccount ? "Deleting..." : "Permanently Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

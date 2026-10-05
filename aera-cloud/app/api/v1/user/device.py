@@ -1,8 +1,8 @@
-# app/api/v1/user.py
+# aera-cloud/app/api/v1/user/device.py
 
 import json
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -10,41 +10,10 @@ from sqlalchemy import select
 from app.core.database import get_db, get_redis_client
 from app.db.models.user import User
 from app.db.models.device import Device, DeviceVisibility
-from app.schemas.user import UserResponse, UserUpdate, DeviceResponse, ClaimDeviceRequest
+from app.schemas.user import DeviceResponse, ClaimDeviceRequest
 from app.api.v1.deps import get_current_user
 
 router = APIRouter()
-
-
-# ---------------------------------------------------------------------------
-# User Profile Endpoints
-# ---------------------------------------------------------------------------
-@router.get("/me", response_model=UserResponse)
-async def get_profile(current_user: User = Depends(get_current_user)):
-    return current_user
-
-
-@router.patch("/me", response_model=UserResponse)
-async def update_profile(
-    payload: UserUpdate,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    if payload.full_name is not None:
-        current_user.full_name = payload.full_name
-
-    if payload.email is not None and payload.email != current_user.email:
-        existing = await db.execute(select(User).where(User.email == payload.email))
-        if existing.scalars().first():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email is already taken by another account."
-            )
-        current_user.email = payload.email
-
-    await db.commit()
-    await db.refresh(current_user)
-    return current_user
 
 
 # ---------------------------------------------------------------------------
@@ -95,7 +64,6 @@ async def claim_device(
     device = await db.get(Device, payload.device_id)
 
     if not device:
-        # If node hasn't sent telemetry yet, provision record with initial ownership
         device = Device(
             id=payload.device_id,
             name=payload.name or f"Node {payload.device_id[-6:]}",

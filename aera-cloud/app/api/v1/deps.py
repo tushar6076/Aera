@@ -1,4 +1,4 @@
-# app/api/v1/deps.py
+# app/v1/deps.py
 
 from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer

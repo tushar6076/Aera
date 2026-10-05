@@ -7,7 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     # App & Server
     PROJECT_NAME: str = "Aera Cloud"
-    API_V1_STR: str = "/api/v1"
+    API_V1_STR: str = "/v1"
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
     PORT: int = 8085

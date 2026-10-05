@@ -14,18 +14,23 @@
 
 #define AERA_HOST                "aera-cloud.hacksmiths.dev"
 #define AERA_PORT                443
-#define AERA_INGEST_ENDPOINT     "/v1/telemetry/ingest"
+#define AERA_INGEST_ENDPOINT     "/api/device/telemetry/ingest"
 #define AERA_API_KEY             "4d977bc73f3b74fa735b5e4d3503df5fe534a6064bd6fabb51919864b6ce47b4"
 
 // Pin Assignments
 #define PIN_DHT11                4
 #define PIN_MQ9_ANALOG           34
-#define PIN_STATUS_LED           2
+#define PIN_POWER_LED            13
+#define PIN_STATUS_LED           2  
 #define PIN_BUZZER               15
 
 // Operational Parameters
 #define MQ9_ADC_RESOLUTION       12
-#define MQ9_ALERT_PPM_LIMIT      350.0f
+
+// Standard Atmospheric & Hardware Calibration
+#define MQ9_RL_VALUE_KOHM        10.0f    // Standard 10k load resistor on MQ breakouts
+#define MQ9_CLEAN_AIR_RATIO      9.83f    // Rs/R0 ratio in clean ambient air from MQ-9 datasheet
+#define HARD_SAFETY_CO_LIMIT     70.0f    // Immediate physical evacuation hazard limit (PPM)
 #define TELEMETRY_INTERVAL_MS    5000
 #define WIFI_RETRY_INTERVAL_MS   10000
 #define SERIAL_BAUD_RATE         115200
@@ -34,23 +39,21 @@ enum SystemState {
   STATE_BOOTING,
   STATE_WIFI_CONNECTING,
   STATE_PORTAL_ACTIVE,
-  STATE_ONLINE,
-  STATE_ALERT,
-  STATE_ERROR
+  STATE_ONLINE
 };
 
 // ============================================================================
-// HARDWARE IDENTITY (DERIVED FROM EFUSE MAC)
+// HARDWARE IDENTITY & SENSOR CALIBRATION STATE
 // ============================================================================
-static String aeraDeviceId = "";  // e.g. "AERA-B21A80"
-static String aeraAPName   = "";  // e.g. "Aera-B21A80"
+static String aeraDeviceId = "";
+static String aeraAPName   = "";
+static float mq9_R0        = 12.5f;       // Calibrated clean-air baseline resistance (kOhm)
 
 static void initHardwareIdentity() {
   uint64_t mac = ESP.getEfuseMac();
   char idBuffer[20];
   char apBuffer[20];
 
-  // Extract the last 3 octets (6 hex characters) for a clean hardware tag
   uint32_t shortId = (uint32_t)(mac >> 24) & 0xFFFFFF;
 
   snprintf(idBuffer, sizeof(idBuffer), "AERA-%06X", shortId);
@@ -199,15 +202,10 @@ static void setSystemState(SystemState newState) {
   if (currentState == newState) return;
   currentState = newState;
 
-  if (currentState == STATE_BOOTING || currentState == STATE_ONLINE) {
-    digitalWrite(PIN_STATUS_LED, HIGH);
-    digitalWrite(PIN_BUZZER, LOW);
-  } else if (currentState == STATE_ERROR) {
+  if (currentState == STATE_BOOTING) {
     digitalWrite(PIN_STATUS_LED, LOW);
-    digitalWrite(PIN_BUZZER, LOW);
-  } else if (currentState == STATE_ALERT) {
+  } else if (currentState == STATE_ONLINE) {
     digitalWrite(PIN_STATUS_LED, HIGH);
-    digitalWrite(PIN_BUZZER, HIGH);
   }
 }
 
@@ -217,7 +215,8 @@ static void triggerBeep(uint16_t durationMs) {
   digitalWrite(PIN_BUZZER, LOW);
 }
 
-static void pulseLed() {
+static void pulseStatusLed() {
+  if (currentState != STATE_ONLINE) return;
   digitalWrite(PIN_STATUS_LED, LOW);
   isPulsing = true;
   pulseEndTime = millis() + 60;
@@ -226,11 +225,13 @@ static void pulseLed() {
 static void updateStatusIndicators() {
   unsigned long now = millis();
 
+  // Process heartbeat pulse recovery
   if (isPulsing && now >= pulseEndTime) {
     isPulsing = false;
-    digitalWrite(PIN_STATUS_LED, (currentState == STATE_ONLINE) ? HIGH : LOW);
+    digitalWrite(PIN_STATUS_LED, HIGH);
   }
 
+  // Blink indicator during network association or captive portal setup
   if (currentState == STATE_WIFI_CONNECTING || currentState == STATE_PORTAL_ACTIVE) {
     uint16_t interval = (currentState == STATE_PORTAL_ACTIVE) ? 500 : 200;
     if (now - lastBlinkTime >= interval) {
@@ -238,29 +239,59 @@ static void updateStatusIndicators() {
       blinkToggle = !blinkToggle;
       digitalWrite(PIN_STATUS_LED, blinkToggle ? HIGH : LOW);
     }
-  } else if (currentState == STATE_ALERT) {
-    if (now - lastBlinkTime >= 150) {
-      lastBlinkTime = now;
-      blinkToggle = !blinkToggle;
-      digitalWrite(PIN_STATUS_LED, blinkToggle ? HIGH : LOW);
-      digitalWrite(PIN_BUZZER, blinkToggle ? HIGH : LOW);
-    }
   }
 }
 
 // ============================================================================
-// SENSOR ACQUISITION PROTOCOLS
+// STANDARD SENSOR ACQUISITION & CALIBRATION PROTOCOLS
 // ============================================================================
+static void calibrateCleanAirR0() {
+  uint32_t rawSum = 0;
+  for (int i = 0; i < 32; i++) {
+    rawSum += analogRead(PIN_MQ9_ANALOG);
+    delay(20);
+  }
+  float avgAdc = (float)rawSum / 32.0f;
+  float voltage = (avgAdc / 4095.0f) * 3.3f;
+
+  if (voltage > 0.1f && voltage < 3.2f) {
+    // Rs in clean air = RL * (Vin - Vout) / Vout
+    float rs_air = MQ9_RL_VALUE_KOHM * (3.3f - voltage) / voltage;
+    // R0 = Rs_air / ratio_clean_air
+    mq9_R0 = rs_air / MQ9_CLEAN_AIR_RATIO;
+    Serial.printf("[MQ9] Baseline calibrated: R0 = %.2f kOhm (Clean Air Voltage: %.2fV)\n", mq9_R0, voltage);
+  } else {
+    mq9_R0 = 12.5f; // Fallback to nominal if readings are floating
+    Serial.printf("[MQ9] Using nominal fallback R0: %.2f kOhm\n", mq9_R0);
+  }
+}
+
 static float readMQ9Ppm() {
   uint32_t rawSum = 0;
-  for (int i = 0; i < 8; i++) {
+  for (int i = 0; i < 16; i++) {
     rawSum += analogRead(PIN_MQ9_ANALOG);
     delay(2);
   }
-  float rawAdc = (float)rawSum / 8.0f;
+  float rawAdc = (float)rawSum / 16.0f;
   float voltage = (rawAdc / 4095.0f) * 3.3f;
-  float ratio = voltage / 3.3f;
-  return 10.0f + (ratio * 990.0f);
+
+  // Sensor disconnected or floating
+  if (voltage <= 0.05f) return 0.0f;
+  // Saturated near VCC rail
+  if (voltage >= 3.25f) return 1000.0f;
+
+  // 1. Calculate internal element resistance Rs (kOhm)
+  float rs = MQ9_RL_VALUE_KOHM * (3.3f - voltage) / voltage;
+
+  // 2. Compute standardized Rs/R0 ratio
+  float ratio = rs / mq9_R0;
+  if (ratio <= 0.01f) ratio = 0.01f;
+
+  // 3. MQ-9 Carbon Monoxide Characteristic Curve: PPM = 95.0 * (Rs/R0)^(-1.45)
+  float ppm = 95.0f * pow(ratio, -1.45f);
+
+  if (isnan(ppm) || ppm < 0.0f) ppm = 0.0f;
+  return ppm;
 }
 
 // ============================================================================
@@ -345,7 +376,6 @@ static void startCaptivePortal() {
     Serial.printf("[AERA] Station broadcast active! SSID: %s | Gateway: http://192.168.4.1\n", aeraAPName.c_str());
   } else {
     Serial.println("[ERROR] Failed to start SoftAP radio layer.");
-    setSystemState(STATE_ERROR);
   }
 }
 
@@ -362,8 +392,11 @@ static bool connectWiFi(const String& ssid, const String& pass) {
 
   Serial.printf("[AERA] Associating with network: %s", ssid.c_str());
   uint8_t attempts = 0;
-  while (WiFi.status() != WL_CONNECTED && attempts < 25) {
-    delay(400);
+  while (WiFi.status() != WL_CONNECTED && attempts < 30) {
+    for (int i = 0; i < 20; i++) {
+      delay(20);
+      updateStatusIndicators();
+    }
     Serial.print(".");
     attempts++;
   }
@@ -374,8 +407,11 @@ static bool connectWiFi(const String& ssid, const String& pass) {
 static bool postTelemetry(float temp, float hum, float co) {
   WiFiClientSecure client;
   client.setInsecure();
+  client.setTimeout(6);
 
   HTTPClient https;
+  https.setTimeout(6000);
+
   char url[160];
   snprintf(url, sizeof(url), "https://%s:%u%s", AERA_HOST, AERA_PORT, AERA_INGEST_ENDPOINT);
 
@@ -391,21 +427,42 @@ static bool postTelemetry(float temp, float hum, float co) {
   snprintf(authHeader, sizeof(authHeader), "Bearer %s", AERA_API_KEY);
   https.addHeader("Authorization", authHeader);
 
-  char jsonBody[256];
+  char jsonBody[280];
   snprintf(jsonBody, sizeof(jsonBody),
-           "{\"device_id\":\"%s\",\"temperature\":%.2f,\"humidity\":%.2f,\"co\":%.2f}",
+           "{\"device_id\":\"%s\",\"temperature\":%.2f,\"humidity\":%.2f,\"co\":%.2f,\"pm25\":0.0,\"pm10\":0.0}",
            aeraDeviceId.c_str(), temp, hum, co);
 
   int httpCode = https.POST((uint8_t*)jsonBody, strlen(jsonBody));
   bool success = (httpCode >= 200 && httpCode < 300);
 
-  if (!success) {
-    Serial.printf("[HTTP] POST rejected. Code: %d\n", httpCode);
+  if (success) {
+    String responseBody = https.getString();
+    Serial.printf("[HTTP] 200 OK: %s\n", responseBody.c_str());
+
+    bool isOkStatus = (responseBody.indexOf("\"status\":\"ok\"") >= 0);
+
+    if (isOkStatus) {
+      bool serverBuzzerAlert = (responseBody.indexOf("\"buzzer\":true") >= 0 || 
+                                responseBody.indexOf("\"buzzer\": true") >= 0);
+
+      // Trigger buzzer strictly on cloud advisory directive or acute safety threshold
+      if (serverBuzzerAlert || co >= HARD_SAFETY_CO_LIMIT) {
+        digitalWrite(PIN_BUZZER, HIGH);
+        Serial.printf("[ALERT] Buzzer active: Cloud directive=%s | CO=%.1f PPM (Limit: %.1f PPM)\n", 
+                      serverBuzzerAlert ? "TRUE" : "FALSE", co, HARD_SAFETY_CO_LIMIT);
+      } else {
+        digitalWrite(PIN_BUZZER, LOW);
+      }
+    } else {
+      digitalWrite(PIN_BUZZER, LOW);
+    }
+    setSystemState(STATE_ONLINE);
   } else {
-    Serial.printf("[HTTP] Ingest 200 OK: %s\n", jsonBody);
+    Serial.printf("[HTTP] POST rejected. Code: %d\n", httpCode);
   }
 
   https.end();
+  client.stop();
   return success;
 }
 
@@ -415,21 +472,28 @@ static bool postTelemetry(float temp, float hum, float co) {
 void setup() {
   Serial.begin(SERIAL_BAUD_RATE);
 
+  pinMode(PIN_POWER_LED, OUTPUT);
   pinMode(PIN_STATUS_LED, OUTPUT);
   pinMode(PIN_BUZZER, OUTPUT);
   pinMode(PIN_MQ9_ANALOG, INPUT);
   analogReadResolution(MQ9_ADC_RESOLUTION);
 
+  digitalWrite(PIN_STATUS_LED, LOW);
+  digitalWrite(PIN_BUZZER, LOW);
+  digitalWrite(PIN_POWER_LED, HIGH);
+
   setSystemState(STATE_BOOTING);
   dhtSensor.begin();
 
-  // Derive unique hardware IDs before doing anything with radios or storage
   initHardwareIdentity();
 
   Serial.println("\n--------------------------------------------------------");
   Serial.println(" Aera Environmental Labs - Atmospheric Sensor Node");
   Serial.printf(" Device Hardware Identity: %s\n", aeraDeviceId.c_str());
   Serial.println("--------------------------------------------------------");
+
+  // Perform clean-air baseline resistance acquisition
+  calibrateCleanAirR0();
 
   prefs.begin("aera-net", true);
   activeSSID = prefs.getString("ssid", "");
@@ -444,10 +508,10 @@ void setup() {
       Serial.println("[AERA] Station successfully associated with local router.");
       Serial.printf("[AERA] IP Assigned: %s\n", WiFi.localIP().toString().c_str());
       setSystemState(STATE_ONLINE);
-      triggerBeep(120);
+      triggerBeep(80);
       return;
     }
-    Serial.println("[AERA] Connection failed. Escalating to provisioning mode.");
+    Serial.println("[AERA] Stored network unreachable. Starting provisioning portal...");
   } else {
     Serial.println("[AERA] No previous network configured.");
   }
@@ -466,15 +530,14 @@ void loop() {
 
   unsigned long now = millis();
 
-  // Background Wi-Fi self-healing and recovery
+  // Self-healing Wi-Fi link monitoring
   if (WiFi.status() != WL_CONNECTED && (now - lastWifiRetry >= WIFI_RETRY_INTERVAL_MS)) {
     lastWifiRetry = now;
-    Serial.println("[AERA] Wi-Fi drop detected. Attempting telemetry recovery...");
+    Serial.println("[AERA] Wi-Fi link interrupted. Attempting reconnection...");
+    setSystemState(STATE_WIFI_CONNECTING);
     if (connectWiFi(activeSSID, activePass)) {
       Serial.println("[AERA] Wi-Fi link re-established.");
       setSystemState(STATE_ONLINE);
-    } else {
-      setSystemState(STATE_ERROR);
     }
   }
 
@@ -496,18 +559,10 @@ void loop() {
     Serial.printf("[TELEMETRY] [%s] Temp: %.1f C | Humidity: %.1f %% | CO: %.2f PPM\n",
                   aeraDeviceId.c_str(), temperature, humidity, co_ppm);
 
-    if (co_ppm >= MQ9_ALERT_PPM_LIMIT) {
-      setSystemState(STATE_ALERT);
-    } else if (WiFi.status() == WL_CONNECTED) {
-      setSystemState(STATE_ONLINE);
-    }
-
     if (WiFi.status() == WL_CONNECTED) {
       bool dispatched = postTelemetry(temperature, humidity, co_ppm);
       if (dispatched) {
-        pulseLed();
-      } else {
-        Serial.println("[WARN] Telemetry pipeline rejected packet.");
+        pulseStatusLed();
       }
     }
   }

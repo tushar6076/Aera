@@ -1,4 +1,3 @@
-// aera-web/src/components/dashboard/ClaimDeviceModal.jsx
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -25,10 +24,18 @@ export default function ClaimDeviceModal({ open, onOpenChange, onDeviceClaimed }
     try {
       setScanning(true);
       setError(null);
-      const list = await deviceService.getUnclaimedDevices();
-      setUnclaimedList(list || []);
+      const res = await deviceService.getUnclaimedDevices();
+      
+      // Normalize array if backend returns ['ID'] or [{ id: 'ID' }]
+      const rawList = Array.isArray(res) ? res : res?.devices || [];
+      const normalized = rawList
+        .map((item) => (typeof item === "string" ? item : item?.id))
+        .filter(Boolean);
+
+      setUnclaimedList(normalized);
     } catch (err) {
       console.error("Discovery error:", err);
+      setError("Failed to query nearby nodes.");
     } finally {
       setScanning(false);
     }
@@ -54,7 +61,7 @@ export default function ClaimDeviceModal({ open, onOpenChange, onDeviceClaimed }
       setError(null);
       const claimed = await deviceService.claimDevice(
         targetId.trim().toUpperCase(),
-        friendlyName?.trim() || `Node ${targetId.slice(-6)}`
+        friendlyName?.trim() || `Node ${targetId.trim().slice(-6)}`
       );
 
       if (onDeviceClaimed) {
@@ -129,7 +136,7 @@ export default function ClaimDeviceModal({ open, onOpenChange, onDeviceClaimed }
                 No unclaimed nodes detected broadcasting.
               </p>
               <p className="text-[11px] text-muted-foreground mt-1">
-                Ensure your ESP32 is powered on and joined to local Wi-Fi.
+                Ensure your ESP32 is powered on and sending data to the server.
               </p>
             </div>
           ) : (
@@ -156,7 +163,7 @@ export default function ClaimDeviceModal({ open, onOpenChange, onDeviceClaimed }
                       </Badge>
                     </div>
                     <span className="text-[11px] text-muted-foreground">
-                      Broadcasting on regional grid
+                      Broadcasting on local network
                     </span>
                   </div>
                   <Button
@@ -180,7 +187,7 @@ export default function ClaimDeviceModal({ open, onOpenChange, onDeviceClaimed }
           </span>
           <div className="space-y-2">
             <Input
-              placeholder="e.g. AERA-B21A80"
+              placeholder="e.g. AERA-F4803C"
               value={deviceIdInput}
               onChange={(e) => setDeviceIdInput(e.target.value)}
               className="rounded-xl border-border bg-muted/40 text-foreground text-xs font-mono uppercase focus-visible:ring-ring"

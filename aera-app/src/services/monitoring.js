@@ -1,48 +1,67 @@
-// aera-app/src/services/monitoring.js
 import api, { WS_BASE_URL } from "./api";
 
 export const monitoringService = {
-  // --- Hardware Device Telemetry (ESP32) ---
-  
+  // -------------------------------------------------------------------------
+  // Hardware Device Telemetry (ESP32)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Fetch most recent telemetry snapshot (Redis RAM hot-cache -> PostgreSQL fallback)
+   */
   async getLatest(deviceId) {
     const res = await api.get(`/v1/monitoring/latest/${deviceId}`);
     return res.data;
   },
 
+  /**
+   * Fetch chronological records for trend/historical charts
+   */
   async getHistory(deviceId, limit = 50) {
     const res = await api.get(`/v1/monitoring/history/${deviceId}?limit=${limit}`);
     return res.data;
   },
 
+  /**
+   * Fetch AI health precaution grounded in device sensor values
+   */
   async getDeviceRecommendation(deviceId) {
     const res = await api.get(`/v1/monitoring/recommendation/device/${deviceId}`);
     return res.data;
   },
 
+  // Backward compatibility alias
   async getRecommendation(deviceId) {
     return this.getDeviceRecommendation(deviceId);
   },
 
+  /**
+   * Live streaming WebSocket endpoint for real-time dashboard subscriptions
+   */
   getLiveStreamUrl(deviceId) {
     return `${WS_BASE_URL}/api/v1/monitoring/ws/live/${deviceId}`;
   },
 
-  // --- Ambient Public Weather & Air Layer ---
-  
+  // -------------------------------------------------------------------------
+  // Ambient Grid Weather & Satellite Layer (No Hardware Node Needed)
+  // -------------------------------------------------------------------------
+
+  /**
+   * Reverse geocode coordinates to friendly neighborhood/city string
+   */
   async reverseGeocode(lat, lon) {
     try {
       const res = await fetch(
         `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`,
         {
-          headers: { "User-Agent": "Aera-Mobile/1.0" },
+          headers: { "User-Agent": "Aera-Client/1.0" },
         }
       );
       const data = await res.json();
       return (
-        data.address.city ||
-        data.address.town ||
-        data.address.village ||
-        data.address.county ||
+        data.address?.city ||
+        data.address?.town ||
+        data.address?.village ||
+        data.address?.county ||
         "Local Region"
       );
     } catch {
@@ -50,6 +69,9 @@ export const monitoringService = {
     }
   },
 
+  /**
+   * Fetch concurrent weather and particulate metrics from Open-Meteo
+   */
   async getAmbientWeather(lat = 21.1904, lon = 81.2849) {
     const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m&timezone=auto`;
     const aqiUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=pm2_5,pm10,carbon_monoxide,ozone,nitrogen_dioxide&hourly=pm2_5,pm10&timezone=auto`;
@@ -95,11 +117,17 @@ export const monitoringService = {
     };
   },
 
+  /**
+   * Submit current ambient reading to cache in Redis and obtain LLM recommendations
+   */
   async getAmbientRecommendation(telemetryPayload) {
     const res = await api.post("/v1/monitoring/recommendation/ambient", telemetryPayload);
     return res.data;
   },
 
+  /**
+   * Retrieve cached ambient snapshot for the authenticated session
+   */
   async getCurrentAmbientSnapshot() {
     const res = await api.get("/v1/monitoring/recommendation/ambient/current");
     return res.data;

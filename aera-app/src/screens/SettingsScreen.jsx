@@ -1,7 +1,8 @@
+// aera-app/src/screens/SettingsScreen.jsx
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, Alert, TouchableOpacity } from "react-native";
 import { useAuth } from "../hooks/useAuth";
-import { monitoringService } from "../services/monitoring";
+import { useDevice } from "../hooks/useDevice";
 import api from "../services/api";
 import { colors, typography, shadows } from "../styles/theme";
 
@@ -12,6 +13,14 @@ import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "../components/ui/dialog";
+import {
   User,
   Mail,
   Cpu,
@@ -19,28 +28,30 @@ import {
   LogOut,
   Save,
   CheckCircle2,
+  AlertTriangle,
 } from "lucide-react-native";
 
 export default function SettingsScreen() {
   const { user, setUser, logout } = useAuth();
+  const { 
+    devices, 
+    selectedDevice, 
+    setSelectedDevice, 
+    release, 
+    refreshDevices 
+  } = useDevice();
+
   const [fullName, setFullName] = useState(user?.full_name || "");
   const [email, setEmail] = useState(user?.email || "");
-  const [devices, setDevices] = useState([]);
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
 
-  const loadDevices = async () => {
-    try {
-      const list = await monitoringService.getDevices();
-      setDevices(list || []);
-    } catch (e) {
-      console.warn("Could not load devices:", e);
-    }
-  };
+  const [targetDevice, setTargetDevice] = useState(null);
+  const [isUnlinking, setIsUnlinking] = useState(false);
 
   useEffect(() => {
-    loadDevices();
-  }, []);
+    refreshDevices();
+  }, [refreshDevices]);
 
   const handleSaveProfile = async () => {
     setSuccessMsg("");
@@ -63,26 +74,24 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleUnlink = (deviceId) => {
-    Alert.alert(
-      "Unlink Station",
-      `Are you sure you want to release node "${deviceId}"?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Unlink",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await api.delete(`/v1/user/devices/${deviceId}`);
-              loadDevices();
-            } catch (err) {
-              Alert.alert("Error", "Failed to release node.");
-            }
-          },
-        },
-      ]
-    );
+  const confirmUnlink = async () => {
+    if (!targetDevice) return;
+    setIsUnlinking(true);
+    try {
+      // 1. Release node via global DeviceContext (handles API call and list refresh)
+      await release(targetDevice.id);
+
+      // 2. If the unlinked node was active on the dashboard, reset to Ambient
+      if (selectedDevice?.id === targetDevice.id) {
+        setSelectedDevice(null);
+      }
+
+      setTargetDevice(null);
+    } catch (err) {
+      Alert.alert("Error", err.response?.data?.detail || "Failed to release node.");
+    } finally {
+      setIsUnlinking(false);
+    }
   };
 
   return (
@@ -94,10 +103,7 @@ export default function SettingsScreen() {
         contentContainerStyle={styles.content}
       >
         {successMsg ? (
-          <Badge
-            variant="outline"
-            style={styles.successBanner}
-          >
+          <Badge variant="outline" style={styles.successBanner}>
             <CheckCircle2 size={14} color={colors.success} />
             <Text style={styles.successBannerText}>{successMsg}</Text>
           </Badge>
@@ -157,7 +163,7 @@ export default function SettingsScreen() {
                 </View>
                 <TouchableOpacity
                   style={styles.unlinkBtn}
-                  onPress={() => handleUnlink(d.id)}
+                  onPress={() => setTargetDevice(d)}
                 >
                   <Trash2 size={16} color={colors.danger} />
                 </TouchableOpacity>
@@ -167,15 +173,51 @@ export default function SettingsScreen() {
         </Card>
 
         {/* Logout Button */}
-        <Button
-          variant="outline"
-          onPress={logout}
-          style={styles.logoutBtn}
-        >
+        <Button variant="outline" onPress={logout} style={styles.logoutBtn}>
           <LogOut size={16} color={colors.danger} />
           <Text style={styles.logoutText}>Sign Out of Station</Text>
         </Button>
       </ScreenLayout>
+
+      {/* Confirmation Dialog */}
+      <Dialog
+        open={Boolean(targetDevice)}
+        onOpenChange={(open) => !open && setTargetDevice(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <View style={styles.dialogIconWrap}>
+              <AlertTriangle size={20} color={colors.danger} />
+            </View>
+            <DialogTitle>Unlink Station Node</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to release node{" "}
+              <Text style={styles.boldMono}>
+                "{targetDevice?.name || targetDevice?.id}"
+              </Text>
+              ? Telemetry updates from this hardware unit will stop streaming immediately.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              disabled={isUnlinking}
+              onPress={() => setTargetDevice(null)}
+              style={styles.dialogCancelBtn}
+            >
+              <Text style={styles.dialogCancelText}>Cancel</Text>
+            </Button>
+            <Button
+              loading={isUnlinking}
+              onPress={confirmUnlink}
+              style={styles.dialogConfirmBtn}
+            >
+              <Text style={styles.dialogConfirmText}>Release Node</Text>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </View>
   );
 }
@@ -294,5 +336,42 @@ const styles = StyleSheet.create({
     color: colors.danger,
     fontWeight: typography.weights.bold,
     fontSize: typography.sizes.sm,
+  },
+  dialogIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.dangerLight,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
+  },
+  boldMono: {
+    fontFamily: typography.mono,
+    color: colors.text,
+    fontWeight: typography.weights.bold,
+  },
+  dialogCancelBtn: {
+    paddingHorizontal: 16,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: "transparent",
+    borderColor: colors.border,
+  },
+  dialogCancelText: {
+    color: colors.textMuted,
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+  },
+  dialogConfirmBtn: {
+    paddingHorizontal: 16,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: colors.danger,
+  },
+  dialogConfirmText: {
+    color: colors.card,
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.bold,
   },
 });

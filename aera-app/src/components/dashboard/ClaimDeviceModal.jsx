@@ -32,10 +32,18 @@ export default function ClaimDeviceModal({
     try {
       setScanning(true);
       setError(null);
-      const list = await deviceService.getUnclaimedDevices();
-      setUnclaimedList(list || []);
+      const res = await deviceService.getUnclaimedDevices();
+      
+      // Handles ['AERA-...'] and [{id: 'AERA-...'}] gracefully
+      const rawList = Array.isArray(res) ? res : res?.devices || [];
+      const normalized = rawList
+        .map((item) => (typeof item === "string" ? item : item?.id))
+        .filter(Boolean);
+
+      setUnclaimedList(normalized);
     } catch (e) {
       console.warn("Mobile scan error:", e);
+      setError("Failed to query nearby nodes.");
     } finally {
       setScanning(false);
     }
@@ -60,7 +68,7 @@ export default function ClaimDeviceModal({
       setError(null);
       const claimed = await deviceService.claimDevice(
         targetId.trim().toUpperCase(),
-        friendlyName?.trim() || `Node ${targetId.slice(-6)}`
+        friendlyName?.trim() || `Node ${targetId.trim().slice(-6)}`
       );
       if (onDeviceClaimed) onDeviceClaimed(claimed);
       onClose();
@@ -86,7 +94,7 @@ export default function ClaimDeviceModal({
               </View>
               <View>
                 <Text style={styles.title}>Pair Aera Hardware Node</Text>
-                <Text style={styles.subtitle}>Link station using its Node ID</Text>
+                <Text style={styles.subtitle}>Link station using its broadcasted ID</Text>
               </View>
             </View>
             <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -124,14 +132,14 @@ export default function ClaimDeviceModal({
             {unclaimedList.length === 0 ? (
               <View style={styles.emptyBox}>
                 <Text style={styles.emptyText}>No unclaimed nodes detected broadcasting.</Text>
-                <Text style={styles.emptySubText}>Ensure ESP32 is powered and connected to Wi-Fi.</Text>
+                <Text style={styles.emptySubText}>Ensure ESP32 is powered and sending telemetry to the cloud.</Text>
               </View>
             ) : (
               unclaimedList.map((id) => (
                 <View key={id} style={styles.discoveredRow}>
                   <View>
                     <Text style={styles.nodeIdText}>{id}</Text>
-                    <Text style={styles.nodeSubText}>Awaiting account pair</Text>
+                    <Text style={styles.nodeSubText}>Broadcasting on network</Text>
                   </View>
                   <TouchableOpacity
                     style={styles.pairSmallBtn}
@@ -149,7 +157,7 @@ export default function ClaimDeviceModal({
               <Text style={styles.sectionTitle}>Or Register Manually</Text>
               <TextInput
                 style={[styles.input, styles.monoInput]}
-                placeholder="NODE ID (E.G. AERA-B21A80)"
+                placeholder="NODE ID (E.G. AERA-F4803C)"
                 placeholderTextColor={colors.textDim}
                 autoCapitalize="characters"
                 value={deviceIdInput}

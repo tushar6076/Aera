@@ -8,10 +8,7 @@ from fastapi import (
     Depends,
     status,
 )
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from typing import Optional
-from app.core.database import get_db
 from app.core.logging import logger
 from app.db.models.device import Device
 from app.schemas.device import TelemetryIngestPayload, IngestAckResponse
@@ -28,7 +25,6 @@ device_router = APIRouter()
 async def ingest_http_telemetry(
     payload: TelemetryIngestPayload,
     device: Device = Depends(verify_device_http_auth),
-    db: AsyncSession = Depends(get_db),
 ):
     """
     Receives periodic telemetry packets from hardware nodes over HTTPS POST.
@@ -40,7 +36,7 @@ async def ingest_http_telemetry(
     # 1. Ingest, persist telemetry reading, calculate AQI & thresholds
     data_dict = payload.model_dump()
     data_dict["device_id"] = target_id
-    enriched = await process_telemetry(target_id, data_dict, db=db)
+    enriched = await process_telemetry(target_id, data_dict)
 
     if not enriched:
         return IngestAckResponse(status="error", buzzer=False)
@@ -64,7 +60,6 @@ async def esp32_telemetry_ws(
     websocket: WebSocket,
     device_id: str,
     valid_device_id: Optional[str] = Depends(verify_device_ws_auth),
-    db: AsyncSession = Depends(get_db),
 ):
     """
     Bidirectional streaming channel for nodes supporting persistent sockets.
@@ -78,7 +73,7 @@ async def esp32_telemetry_ws(
             raw_msg = await websocket.receive_text()
             payload = json.loads(raw_msg)
 
-            enriched = await process_telemetry(device_id, payload, db=db)
+            enriched = await process_telemetry(device_id, payload)
             if enriched:
                 # Broadcast immediately to frontend clients
                 await device_manager.broadcast_telemetry(device_id, enriched)

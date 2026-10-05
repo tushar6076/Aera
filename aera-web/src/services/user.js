@@ -1,4 +1,3 @@
-// aera-web/src/services/user.js
 import api from "./api";
 
 export const userService = {
@@ -16,6 +15,13 @@ export const userService = {
   async updateProfile(data) {
     const res = await api.patch("/v1/user/me", data);
     return res.data;
+  },
+
+  /**
+   * Permanently delete authenticated user account
+   */
+  async deleteAccount() {
+    await api.delete("/v1/user/me");
   },
 };
 

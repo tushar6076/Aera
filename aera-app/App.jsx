@@ -1,6 +1,6 @@
 // aera-app/App.jsx
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { View, StyleSheet, Animated } from "react-native";
+import { View, StyleSheet, Animated, Easing, InteractionManager } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import * as SplashScreen from "expo-splash-screen";
@@ -8,74 +8,90 @@ import { AuthProvider, useAuth } from "./src/hooks/useAuth";
 import { DeviceProvider } from "./src/hooks/useDevice";
 import AppNavigator from "./src/navigation/AppNavigator";
 import PreSplashScreen from "./src/screens/PreSplashScreen";
-import { colors } from "./src/styles/theme";
 
-// Keep native splash locked solid at startup
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function MainContent() {
   const { loading } = useAuth();
-  const [appIsReady, setAppIsReady] = useState(false);
+  const [minTimerDone, setMinTimerDone] = useState(false);
+  const [navigatorMounted, setNavigatorMounted] = useState(false);
   const [splashAnimationDone, setSplashAnimationDone] = useState(false);
-  // opacity anim starting at 1 (visible)
-  const fadeAnim = useRef(new Animated.Value(1)).current;
 
-  // Pre-load dependencies and lock timer
+  // Animation values for smooth zoom-out & dissolve
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  // 1. Guaranteed clean splash display window (1.8s)
   useEffect(() => {
-    async function prepare() {
-      try {
-        // Enforce guaranteed splash display window (2.0s)
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-      } catch (e) {
-        console.warn("Splash prepare error:", e);
-      } finally {
-        setAppIsReady(true);
-      }
-    }
-    prepare();
+    const timer = setTimeout(() => {
+      setMinTimerDone(true);
+    }, 1800);
+    return () => clearTimeout(timer);
   }, []);
 
-  // Drop native OS splash ONLY once root view has finished laying out
+  // 2. Hide native boot splash once root view has measured
   const onLayoutRootView = useCallback(async () => {
     await SplashScreen.hideAsync().catch(() => {});
   }, []);
 
-  // Run exit animation once BOTH auth is initialized and min timer elapsed
+  // 3. Mount Navigator behind the splash once Auth resolves
   useEffect(() => {
-    if (appIsReady && !loading) {
-      // UPDATED TRANSITION: Using spring for a fast, clean, instantaneous vanish.
-      // Removed downward movement; this now strictly fades.
-      Animated.spring(fadeAnim, {
-        toValue: 0,
-        // Configured for rapid, snappy disappearance without bounce
-        stiffness: 1000,
-        damping: 100,
-        useNativeDriver: true,
-      }).start(() => {
-        setSplashAnimationDone(true);
-      });
+    if (minTimerDone && !loading) {
+      setNavigatorMounted(true);
     }
-  }, [appIsReady, loading, fadeAnim]);
+  }, [minTimerDone, loading]);
+
+  // 4. Run zoom-out & dissolve on native driver only after JS interactions settle
+  useEffect(() => {
+    if (navigatorMounted) {
+      const task = InteractionManager.runAfterInteractions(() => {
+        // Small 60ms cushion guarantees React Navigation layout commit
+        const transitionTimer = setTimeout(() => {
+          Animated.parallel([
+            Animated.timing(fadeAnim, {
+              toValue: 0,
+              duration: 350,
+              easing: Easing.out(Easing.cubic),
+              useNativeDriver: true,
+            }),
+            Animated.timing(scaleAnim, {
+              toValue: 1.08, // Subtle zoom-out expansion as it dissolves
+              duration: 350,
+              easing: Easing.out(Easing.cubic),
+              useNativeDriver: true,
+            }),
+          ]).start(() => {
+            setSplashAnimationDone(true);
+          });
+        }, 60);
+
+        return () => clearTimeout(transitionTimer);
+      });
+
+      return () => task.cancel();
+    }
+  }, [navigatorMounted, fadeAnim, scaleAnim]);
 
   return (
     <View style={styles.root} onLayout={onLayoutRootView}>
       <StatusBar style="dark" />
 
-      {/* 
-        CRUCIAL: Only mount AppNavigator when we start vanishing.
-        This ensures LoginScreen is ready underneath the fading overlay.
-      */}
-      {appIsReady && !loading && <AppNavigator />}
+      {/* Navigator paints securely beneath the curtain */}
+      {navigatorMounted && (
+        <View style={StyleSheet.absoluteFill}>
+          <AppNavigator />
+        </View>
+      )}
 
-      {/* Splash overlay stays mounted until animation completes entirely */}
+      {/* Zoom-out dissolve overlay */}
       {!splashAnimationDone && (
         <Animated.View
           style={[
             StyleSheet.absoluteFillObject,
-            { 
-              opacity: fadeAnim, 
-              zIndex: 99999,
-              // Removed potential transform property here that caused movement
+            styles.overlayContainer,
+            {
+              opacity: fadeAnim,
+              transform: [{ scale: scaleAnim }],
             },
           ]}
           pointerEvents="none"
@@ -103,5 +119,10 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: "#f8fafc",
+  },
+  overlayContainer: {
+    zIndex: 99999,
+    backgroundColor: "#f8fafc",
+    elevation: 99999, // Guarantees overlay stays on top on Android without zIndex bugs
   },
 });
