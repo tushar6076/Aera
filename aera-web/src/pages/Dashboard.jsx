@@ -40,7 +40,7 @@ export default function Dashboard() {
   const [chatOpen, setChatOpen] = useState(false);
 
   // Hardware is active if recent packets arrived via WS or Redis heartbeat confirms it
-  const isStationActive = isHardwareActive || Boolean(deviceLiveState?.is_online);
+  const isStationActive = Boolean(selectedDevice) && (isHardwareActive || Boolean(deviceLiveState?.is_online));
 
   const deviceContext = {
     devices,

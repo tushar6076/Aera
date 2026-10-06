@@ -18,7 +18,7 @@
 #define AERA_API_KEY             "4d977bc73f3b74fa735b5e4d3503df5fe534a6064bd6fabb51919864b6ce47b4"
 
 // Pin Assignments
-#define PIN_DHT11                4
+#define PIN_DHT                  4
 #define PIN_MQ9_ANALOG           34
 #define PIN_POWER_LED            13
 #define PIN_STATUS_LED           2  
@@ -30,7 +30,7 @@
 // Standard Atmospheric & Hardware Calibration
 #define MQ9_RL_VALUE_KOHM        10.0f    // Standard 10k load resistor on MQ breakouts
 #define MQ9_CLEAN_AIR_RATIO      9.83f    // Rs/R0 ratio in clean ambient air from MQ-9 datasheet
-#define HARD_SAFETY_CO_LIMIT     70.0f    // Immediate physical evacuation hazard limit (PPM)
+#define HARD_SAFETY_CO_LIMIT     12.0f    // Immediate physical evacuation hazard limit (PPM)
 #define TELEMETRY_INTERVAL_MS    5000
 #define WIFI_RETRY_INTERVAL_MS   10000
 #define SERIAL_BAUD_RATE         115200
@@ -179,7 +179,7 @@ const char PORTAL_HTML[] PROGMEM = R"rawliteral(
 // ============================================================================
 // SYSTEM STATE & GLOBAL INSTANCES
 // ============================================================================
-static DHT dhtSensor(PIN_DHT11, DHT11);
+static DHT dhtSensor(PIN_DHT, DHT22);
 static WebServer server(80);
 static DNSServer dnsServer;
 static Preferences prefs;
@@ -551,7 +551,7 @@ void loop() {
     if (isnan(temperature) || isnan(humidity)) {
       temperature = 0.0f;
       humidity = 0.0f;
-      Serial.println("[WARN] DHT11 sensor read fault. Check data pin 4 pullup.");
+      Serial.println("[WARN] DHT22 sensor read fault. Check data pin 4 pullup.");
     }
 
     float co_ppm = readMQ9Ppm();

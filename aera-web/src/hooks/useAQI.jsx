@@ -14,14 +14,20 @@ export function useAQI(deviceId) {
   const wsRef = useRef(null);
   const watchdogTimerRef = useRef(null);
 
-  // 1. Telemetry Loader (Ambient fallback when no deviceId, Hardware when deviceId exists)
+  // 1. Telemetry Loader
   useEffect(() => {
     let isMounted = true;
 
+    // Flush stale readings immediately whenever deviceId changes
+    setCurrentReading(null);
+    setHistory([]);
+    setRecommendation(null);
+    setIsHardwareActive(false);
+    setLoading(true);
+
     async function loadAmbientData(lat = 21.1904, lon = 81.2849) {
       try {
-        setLoading(true);
-        setIsHardwareActive(false);
+        if (!isMounted) return;
 
         const [city, ambient] = await Promise.all([
           monitoringService.reverseGeocode(lat, lon),
@@ -30,27 +36,33 @@ export function useAQI(deviceId) {
 
         if (!isMounted) return;
 
-        setCityName(city);
-        setWeatherMetrics(ambient.weather);
-        setHistory(ambient.history);
+        setCityName(city || "Ambient Grid");
+        setWeatherMetrics(ambient?.weather || null);
+        setHistory(ambient?.history || []);
 
-        const readingData = {
-          ...ambient.reading,
+        const ambientReading = {
+          device_id: "AMBIENT",
+          temperature: ambient?.reading?.temperature ?? 0,
+          humidity: ambient?.reading?.humidity ?? 0,
+          pm2_5: ambient?.reading?.pm2_5 ?? 0,
+          pm10: ambient?.reading?.pm10 ?? 0,
+          co: ambient?.reading?.co ?? 0,
           aqi: null,
           category: "Analyzing",
           created_at: new Date().toISOString(),
+          source: "ambient",
         };
-        setCurrentReading(readingData);
+        setCurrentReading(ambientReading);
 
         // Fetch AI recommendations from Groq
         const rec = await monitoringService.getAmbientRecommendation({
           latitude: lat,
           longitude: lon,
-          temperature: ambient.reading.temperature,
-          humidity: ambient.reading.humidity,
-          pm2_5: ambient.reading.pm2_5,
-          pm10: ambient.reading.pm10,
-          co: ambient.reading.co,
+          temperature: ambientReading.temperature,
+          humidity: ambientReading.humidity,
+          pm2_5: ambientReading.pm2_5,
+          pm10: ambientReading.pm10,
+          co: ambientReading.co,
           source: "Ambient Grid",
         });
 
@@ -73,7 +85,7 @@ export function useAQI(deviceId) {
 
     async function loadHardwareData(id) {
       try {
-        setLoading(true);
+        setCityName("Hardware Station");
 
         const [histResult, recResult, latestResult] = await Promise.allSettled([
           monitoringService.getHistory(id, 50),
@@ -111,10 +123,16 @@ export function useAQI(deviceId) {
     if (deviceId) {
       loadHardwareData(deviceId);
     } else {
+      // Prioritize immediate fallback load if geolocation takes too long
       if (typeof window !== "undefined" && navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
-          (pos) => loadAmbientData(pos.coords.latitude, pos.coords.longitude),
-          () => loadAmbientData()
+          (pos) => {
+            if (isMounted) loadAmbientData(pos.coords.latitude, pos.coords.longitude);
+          },
+          () => {
+            if (isMounted) loadAmbientData();
+          },
+          { timeout: 5000 }
         );
       } else {
         loadAmbientData();
@@ -129,36 +147,42 @@ export function useAQI(deviceId) {
 
   // 2. Hardware Live WebSocket Stream
   useEffect(() => {
+    // If no physical device is selected, ensure socket is dead and exit
     if (!deviceId) {
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
       setConnected(false);
       setIsHardwareActive(false);
       return;
     }
 
+    let isEffectActive = true;
     let reconnectTimer = null;
     const wsUrl = monitoringService.getLiveStreamUrl(deviceId);
 
     function connect() {
+      if (!isEffectActive) return;
+
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
       ws.onopen = () => {
-        setConnected(true);
+        if (isEffectActive) setConnected(true);
       };
 
       ws.onmessage = (event) => {
+        if (!isEffectActive) return;
         try {
           const telemetry = JSON.parse(event.data);
           setCurrentReading(telemetry);
           setHistory((prev) => [...prev.slice(-49), telemetry]);
-
-          // ESP packet arrived: station is alive
           setIsHardwareActive(true);
 
-          // Reset 12-second watchdog (ESP posts every 5s; 12s allows 2 dropped pings)
           if (watchdogTimerRef.current) clearTimeout(watchdogTimerRef.current);
           watchdogTimerRef.current = setTimeout(() => {
-            setIsHardwareActive(false);
+            if (isEffectActive) setIsHardwareActive(false);
           }, 12000);
         } catch (e) {
           console.error("Malformed telemetry packet:", e);
@@ -166,6 +190,7 @@ export function useAQI(deviceId) {
       };
 
       ws.onclose = () => {
+        if (!isEffectActive) return;
         setConnected(false);
         setIsHardwareActive(false);
         if (watchdogTimerRef.current) clearTimeout(watchdogTimerRef.current);
@@ -178,9 +203,13 @@ export function useAQI(deviceId) {
     connect();
 
     return () => {
+      isEffectActive = false;
       clearTimeout(reconnectTimer);
       if (watchdogTimerRef.current) clearTimeout(watchdogTimerRef.current);
-      if (wsRef.current) wsRef.current.close();
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
     };
   }, [deviceId]);
 

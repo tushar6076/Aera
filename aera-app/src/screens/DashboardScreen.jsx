@@ -56,8 +56,10 @@ export default function DashboardScreen({ navigation }) {
     });
   };
 
-  // Hardware is truly active only if packets are streaming or Redis heartbeat is active
-  const isStationActive = isHardwareActive || Boolean(deviceLiveState?.is_online);
+  // Hardware is active strictly when a physical station is selected AND reporting live
+  const isStationActive =
+    Boolean(selectedDevice) &&
+    (isHardwareActive || Boolean(deviceLiveState?.is_online));
 
   return (
     <View style={styles.screen}>

@@ -42,8 +42,8 @@ async def process_telemetry(
     aqi, category = compute_naqi(pm2_5=pm2_5, pm10=pm10, co=co)
 
     # Threshold alerts: calibrated CO PPM hazard (>= 50 PPM) or severe AQI (> 300)
-    co_alert = co >= 50.0
-    buzzer_alert = (aqi > 300) or co_alert
+    co_alert = co >= 10.0
+    buzzer_alert = (aqi > 190) or co_alert
 
     enriched = {
         "device_id": device_id,

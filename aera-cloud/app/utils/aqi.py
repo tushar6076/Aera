@@ -1,3 +1,4 @@
+# aera-cloud/app/utils/aqi.py
 from typing import Tuple
 
 # CPCB NAQI Breakpoints for PM2.5 (µg/m³, 24-hr average standard)
@@ -20,15 +21,16 @@ PM10_BREAKPOINTS = [
     (430.1, 600.0, 401, 500, "Severe"),
 ]
 
-# CPCB NAQI Breakpoints for Carbon Monoxide (converted from standard mg/m³ to PPM at 25°C, 1 atm)
-# CPCB Standard: 0-1 mg/m³ (Good), 1.1-2 (Satisfactory), 2.1-10 (Moderate), 10.1-17 (Poor), 17.1-34 (Very Poor), >34 (Severe)
+# Residential Calibrated Breakpoints for MQ-9 Carbon Monoxide (Instantaneous PPM)
+# Absorbs MQ-9 baseline offset while preserving acute safety warnings
 CO_BREAKPOINTS = [
-    (0.0, 4.5, 0, 50, "Good"),
-    (4.6, 9.0, 51, 100, "Satisfactory"),
-    (9.1, 15.0, 101, 200, "Moderate"),
-    (15.1, 25.0, 201, 300, "Poor"),
-    (25.1, 40.0, 301, 400, "Very Poor"),
-    (40.1, 70.0, 401, 500, "Severe"),
+    # (c_low, c_high, i_low, i_high, category)
+    (0.0, 3.5, 0, 50, "Good"),             # Normal clean residential air + sensor baseline
+    (3.6, 7.0, 51, 100, "Satisfactory"),    # Typical room with cooking / closed doors
+    (7.1, 12.0, 101, 200, "Moderate"),     # Approaching WHO chronic limits; prompt ventilation
+    (12.1, 20.0, 201, 300, "Poor"),        # Noticeable hazard / abnormal combustion
+    (20.1, 35.0, 301, 400, "Very Poor"),   # Severe buildup / acute indoor alarm
+    (35.1, 70.0, 401, 500, "Severe"),      # Immediate physical evacuation threshold
 ]
 
 
