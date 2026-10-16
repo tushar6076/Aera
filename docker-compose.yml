@@ -11,11 +11,6 @@ services:
       - "8085:8085"
     env_file:
       - ./aera-cloud/.env
-    # 👇 Keeps container alive and mounts local code for live-reloading
-    tty: true 
-    volumes:
-      - ./aera-cloud:/app
-      - /app/venv/          # 💡 Prevents host environment from overwriting container virtual env
     networks:
       - aera-network
 
@@ -29,10 +24,6 @@ services:
       - "5175:5175"
     depends_on:
       - aera-cloud
-    # 👇 Mounts frontend code and protects container's node_modules
-    volumes:
-      - ./aera-web:/app
-      - /app/node_modules/  # 💡 Prevents host node_modules from overwriting container modules
     networks:
       - aera-network
 

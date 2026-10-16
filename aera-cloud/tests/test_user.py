@@ -1,6 +1,9 @@
+from unittest.mock import AsyncMock
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.db.models.device import Device
 
 pytestmark = pytest.mark.asyncio
@@ -76,20 +79,40 @@ async def test_claim_device_already_owned_conflict(client: AsyncClient):
     assert conflict_res.status_code == 409
 
 
-async def test_release_device(client: AsyncClient, db_session: AsyncSession):
+async def test_release_device(client: AsyncClient, db_session: AsyncSession, monkeypatch):
+    from app.api.v1.user import device as device_api
+
+    send_mail = AsyncMock(return_value=True)
+    monkeypatch.setattr(device_api, "send_mail", send_mail)
     headers = await _get_auth_headers(client, email="releaser@hacksmiths.dev")
     device_id = "AERA-TEMP-NODE"
 
     # Claim
-    await client.post(
+    claim_res = await client.post(
         f"{USER_URL}/claim-device",
         json={"device_id": device_id, "name": "Temp Node"},
         headers=headers,
     )
+    assert claim_res.status_code == 200
+
+    # Repeating a claim for an already-owned device does not produce a duplicate alert.
+    repeated_claim = await client.post(
+        f"{USER_URL}/claim-device",
+        json={"device_id": device_id, "name": "Temp Node"},
+        headers=headers,
+    )
+    assert repeated_claim.status_code == 200
+    assert [call.kwargs["subject"] for call in send_mail.await_args_list] == [
+        "Aera - Device registered",
+    ]
 
     # Release
     del_res = await client.delete(f"{USER_URL}/devices/{device_id}", headers=headers)
     assert del_res.status_code == 204
+    assert [call.kwargs["subject"] for call in send_mail.await_args_list] == [
+        "Aera - Device registered",
+        "Aera - Device removed",
+    ]
 
     # Device list must now be empty
     list_res = await client.get(f"{USER_URL}/devices", headers=headers)

@@ -1,5 +1,8 @@
+from unittest.mock import AsyncMock
+
 import pytest
 from httpx import AsyncClient
+
 from app.core.security import create_password_reset_token
 
 pytestmark = pytest.mark.asyncio
@@ -7,7 +10,11 @@ pytestmark = pytest.mark.asyncio
 AUTH_URL = "/api/v1/auth"
 
 
-async def test_register_and_login_flow(client: AsyncClient):
+async def test_register_and_login_flow(client: AsyncClient, monkeypatch):
+    from app.api.v1 import auth as auth_api
+
+    send_mail = AsyncMock(return_value=True)
+    monkeypatch.setattr(auth_api, "send_mail", send_mail)
     email = "pilot@hacksmiths.dev"
     password = "StrongPassword123!"
 
@@ -27,6 +34,10 @@ async def test_register_and_login_flow(client: AsyncClient):
     data = login_res.json()
     assert "access_token" in data
     assert data["token_type"].lower() == "bearer"
+    assert [call.kwargs["subject"] for call in send_mail.await_args_list] == [
+        "Welcome to Aera",
+        "Aera - New sign-in",
+    ]
 
 
 async def test_register_duplicate_email_conflict(client: AsyncClient):
@@ -54,7 +65,11 @@ async def test_login_invalid_password(client: AsyncClient):
     assert res.status_code == 401
 
 
-async def test_forgot_and_reset_password_flow(client: AsyncClient):
+async def test_forgot_and_reset_password_flow(client: AsyncClient, monkeypatch):
+    from app.api.v1 import auth as auth_api
+
+    send_mail = AsyncMock(return_value=True)
+    monkeypatch.setattr(auth_api, "send_mail", send_mail)
     email = "reset_user@hacksmiths.dev"
     old_pw = "OldPassword123!"
     new_pw = "BrandNewSafePassword456!"
@@ -88,3 +103,9 @@ async def test_forgot_and_reset_password_flow(client: AsyncClient):
 
     success_login = await client.post(f"{AUTH_URL}/login", json={"email": email, "password": new_pw})
     assert success_login.status_code == 200
+    assert [call.kwargs["subject"] for call in send_mail.await_args_list] == [
+        "Welcome to Aera",
+        "Aera - Reset Your Password",
+        "Aera - Password changed",
+        "Aera - New sign-in",
+    ]

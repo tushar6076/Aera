@@ -12,7 +12,7 @@ Built with **FastAPI**, **SQLAlchemy 2.0 (Asyncpg)**, **PostgreSQL (Neon)**, **G
   - `/api/device/ws/{device_id}`: High-throughput ingestion gateway authenticated via hardware pre-shared key (PSK). Computes real-time India NAQI, persists readings, and replies with immediate buzzer flags.
   - `/v1/`: Consumer-facing REST & WebSocket endpoints serving authenticated Web (`aera-web`) and Mobile (`aera-app`) clients.
 - **Atmospheric Precaution Engine**: Relies on Groq LLM inference (`app/services/ai/`) wrapped with deterministic guardrails (`safety.py`) to provide lifestyle guidance without clinical diagnostic risks.
-- **Reliable Email Dispatch**: Non-blocking SMTP deliveries via Titan Email over SSL (Port 465) for password reset flows.
+- **Account & Device Email Alerts**: Non-blocking SMTP deliveries via Titan Email over SSL (Port 465) for welcome, successful sign-in, password reset/change, and user-linked device registration/removal events. Unclaimed hardware discovery does not send mail because it is not tied to an account.
 - **Automated Verification**: Complete asynchronous test suite with 100% green pass rate utilizing an isolated in-memory SQLite engine.
 
 ---

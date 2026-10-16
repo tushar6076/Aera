@@ -19,7 +19,13 @@ from app.schemas.auth import (
     ResetPasswordRequest,
     MessageResponse,
 )
-from app.services.email import send_mail, render_password_reset_email
+from app.services.email import (
+    send_mail,
+    render_login_alert_email,
+    render_password_changed_email,
+    render_password_reset_email,
+    render_welcome_email,
+)
 
 router = APIRouter()
 
@@ -42,6 +48,12 @@ async def register_user(payload: UserRegister, db: AsyncSession = Depends(get_db
     await db.commit()
     await db.refresh(new_user)
 
+    await send_mail(
+        to_email=new_user.email,
+        subject="Welcome to Aera",
+        html_body=render_welcome_email(new_user.full_name),
+    )
+
     token = create_access_token(subject=str(new_user.id))
     return {"access_token": token, "token_type": "bearer"}
 
@@ -56,6 +68,12 @@ async def login_user(payload: UserLogin, db: AsyncSession = Depends(get_db)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password."
         )
+
+    await send_mail(
+        to_email=user.email,
+        subject="Aera - New sign-in",
+        html_body=render_login_alert_email(user.full_name),
+    )
 
     token = create_access_token(subject=str(user.id))
     return {"access_token": token, "token_type": "bearer"}
@@ -111,5 +129,11 @@ async def reset_password(payload: ResetPasswordRequest, db: AsyncSession = Depen
     # Hash and persist new password
     user.hashed_password = get_password_hash(payload.new_password)
     await db.commit()
+
+    await send_mail(
+        to_email=user.email,
+        subject="Aera - Password changed",
+        html_body=render_password_changed_email(user.full_name),
+    )
 
     return {"message": "Password reset successfully. You can now log in with your new credentials."}

@@ -74,12 +74,12 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
 @pytest_asyncio.fixture
 async def client(monkeypatch) -> AsyncGenerator[AsyncClient, None]:
     """ASGI client where get_db returns a session from TestingSessionLocal."""
-    # Mock external email sending service
-    try:
-        from app.services import email
-        monkeypatch.setattr(email, "send_mail", AsyncMock(return_value=True))
-    except (ImportError, AttributeError):
-        pass
+    from app.api.v1 import auth as auth_api
+    from app.api.v1.user import device as user_device_api
+
+    send_mail = AsyncMock(return_value=True)
+    monkeypatch.setattr(auth_api, "send_mail", send_mail)
+    monkeypatch.setattr(user_device_api, "send_mail", send_mail)
 
     app = create_app()
 

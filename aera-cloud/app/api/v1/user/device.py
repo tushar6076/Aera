@@ -12,6 +12,11 @@ from app.db.models.user import User
 from app.db.models.device import Device, DeviceVisibility
 from app.schemas.user import DeviceResponse, ClaimDeviceRequest
 from app.api.v1.deps import get_current_user
+from app.services.email import (
+    render_device_registered_email,
+    render_device_removed_email,
+    send_mail,
+)
 
 router = APIRouter()
 
@@ -62,6 +67,7 @@ async def claim_device(
     Prevents claiming if another user is already assigned as owner.
     """
     device = await db.get(Device, payload.device_id)
+    newly_claimed = device is None
 
     if not device:
         device = Device(
@@ -77,6 +83,7 @@ async def claim_device(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Device is already claimed by another user."
             )
+        newly_claimed = device.owner_id is None
         device.owner_id = current_user.id
         device.claimed_at = datetime.now(timezone.utc)
         if payload.name:
@@ -84,6 +91,17 @@ async def claim_device(
 
     await db.commit()
     await db.refresh(device)
+
+    if newly_claimed:
+        await send_mail(
+            to_email=current_user.email,
+            subject="Aera - Device registered",
+            html_body=render_device_registered_email(
+                current_user.full_name,
+                device.name,
+                device.id,
+            ),
+        )
 
     # Invalidate unclaimed flag in Redis
     redis = get_redis_client()
@@ -113,6 +131,16 @@ async def release_device(
     device.owner_id = None
     device.claimed_at = None
     await db.commit()
+
+    await send_mail(
+        to_email=current_user.email,
+        subject="Aera - Device removed",
+        html_body=render_device_removed_email(
+            current_user.full_name,
+            device.name,
+            device.id,
+        ),
+    )
 
     # Mark unclaimed in Redis so other nearby accounts can discover it
     redis = get_redis_client()
