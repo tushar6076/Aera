@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     MAIL_PORT: int = 465
     MAIL_USERNAME: str = "contact@hacksmiths.dev"
     MAIL_PASSWORD: str = ""
-    MAIL_FROM: str = "contact@hacksmiths.dev"
+    MAIL_FROM: str = "noreply@hacksmiths.dev"
     MAIL_FROM_NAME: str = "Aera by HackSmiths"
     MAIL_USE_TLS: bool = False
     MAIL_USE_SSL: bool = True
