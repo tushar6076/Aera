@@ -6,11 +6,6 @@
     "orientation": "portrait",
     "icon": "./assets/icons/favicon.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/icons/favicon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#f8fafc"
-    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "dev.hacksmiths.aera",

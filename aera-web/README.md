@@ -45,12 +45,13 @@ If using a different API address, update both URLs. For a physical phone or anot
 ## Build and check
 
 ```sh
+npm test
 npm run lint
 npm run build
 npm run preview
 ```
 
-`npm run build` writes the static production site to `dist/`.
+`npm test` runs the starter Vitest suite in `tests/`; test files are kept separate from application code. The current tests cover AQI category boundaries and loading-state messages, not API integration or complete user flows. `tests/setup.js` registers the shared jest-dom matchers used by the component tests. `npm run build` writes the static production site to `dist/`.
 
 ## Docker
 

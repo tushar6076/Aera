@@ -16,6 +16,7 @@
 - React Navigation native stack
 - Axios for API requests
 - AsyncStorage for persisted session tokens
+- Jest and React Native Testing Library for automated component/unit tests
 
 ## Requirements
 
@@ -30,9 +31,22 @@ From the `aera-app/` directory:
 
 ```sh
 npm ci
+npm test
 ```
 
+Automated tests are kept separately from application code in the top-level `tests/` folder. Use `npm run test:watch` while developing tests. The current starter suite verifies AQI category boundaries and loading-state rendering; it does not yet cover API integration or complete app flows. No shared Jest setup file is needed for these tests. Hardware, API integration, simulator and device flows require separate runtime checks.
+
 The app uses the hosted Aera API by default. To use a different backend, change `API_BASE_URL` and `WS_BASE_URL` in `src/services/api.js`. For emulators and physical devices, configure an address reachable from that device; its `localhost` does not refer to the development computer.
+
+## App icon and splash screen
+
+`app.json` selects the shared application icon and configures the Android adaptive-icon foreground. The `expo-splash-screen` config plugin supplies the splash artwork and background for generated native projects. Keep the source assets under `assets/icons/`; regenerate native projects after changing plugin-managed artwork:
+
+```sh
+npx expo prebuild --clean
+```
+
+This command removes and regenerates native project directories. Back up any native-only changes first, or encode them in Expo config/plugins so they can be regenerated.
 
 ## Regenerate native projects
 
@@ -115,6 +129,7 @@ Use Xcode's signing settings and Archive workflow for device or App Store distri
 aera-app/
 ├── App.jsx                # Providers, startup splash, and navigator
 ├── app.json               # Expo app identity and native platform settings
+├── tests/                 # Automated unit and component tests
 └── src/
     ├── components/        # Shared, dashboard, layout, and UI components
     ├── hooks/             # Auth, device, AQI, and chat state

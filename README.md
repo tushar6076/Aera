@@ -156,8 +156,17 @@ See each component README for its configuration details. The repository is licen
 From `aera-cloud/`, run backend tests with `pytest` against a **disposable test database** configured for the suite. Do not point tests at production data. From `aera-web/`, run:
 
 ```sh
+npm test
 npm run lint
 npm run build
+```
+
+From `aera-app/`, run its Jest/React Native test suite with `npm test`. Both JavaScript clients also support `npm run test:watch` for interactive development. The current web and mobile suites are starter unit/component tests covering AQI category boundaries and loading-state messages; they do not yet cover API integration, full user flows, or device behavior. Test coverage output is local and ignored by Git.
+
+Check the Expo app configuration and SDK-compatible package versions from `aera-app/` with:
+
+```sh
+npx expo-doctor
 ```
 
 Docker Compose can validate service configuration with `docker compose config`. Firmware must be compiled and tested on the intended ESP32 hardware; this repository does not include an automated firmware test suite.

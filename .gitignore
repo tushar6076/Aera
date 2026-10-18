@@ -74,6 +74,8 @@ venv.bak/
 .pytest_cache/
 .coverage
 htmlcov/
+coverage/
+.jest/
 .tox/
 .mypy_cache/
 .ruff_cache/
