@@ -18,6 +18,7 @@
     "expo": "~57.0.30",
     "expo-splash-screen": "~57.0.10",
     "expo-status-bar": "~57.0.1",
+    "expo-system-ui": "~57.0.4",
     "lucide-react-native": "^1.48.0",
     "react": "19.2.3",
     "react-native": "0.86.3",
@@ -37,6 +38,9 @@
     "testMatch": [
       "<rootDir>/tests/*.test.[jt]s?(x)"
     ]
+  },
+  "overrides": {
+    "shell-quote": "1.11.0"
   },
   "private": true
 }
