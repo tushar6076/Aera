@@ -36,7 +36,7 @@ npm test
 
 Automated tests are kept separately from application code in the top-level `tests/` folder. Use `npm run test:watch` while developing tests. The current starter suite verifies AQI category boundaries and loading-state rendering; it does not yet cover API integration or complete app flows. No shared Jest setup file is needed for these tests. Hardware, API integration, simulator and device flows require separate runtime checks.
 
-The app uses the hosted Aera API by default. To use a different backend, change `API_BASE_URL` and `WS_BASE_URL` in `src/services/api.js`. For emulators and physical devices, configure an address reachable from that device; its `localhost` does not refer to the development computer.
+The app uses the hosted Aera API at `aera-cloud.hacksmiths.dev` by default. This endpoint is served through the configured Cloudflare Tunnel, so the backend, its database, and the tunnel routes must be available for sign-in and cloud-backed features to work. To use a different backend, change `API_BASE_URL` and `WS_BASE_URL` in `src/services/api.js` before building. For emulators and physical devices, configure an address reachable from that device; its `localhost` does not refer to the development computer.
 
 ## App icon and splash screen
 
@@ -65,11 +65,16 @@ pod install
 
 ## Android
 
-Build a clean release APK from the Android project:
+If the generated native project is not present, create it from `app.json` and the Expo config plugins:
+
+```sh
+npx expo prebuild --platform android
+```
+
+Build a signed release APK from `aera-app/android/`:
 
 ```sh
 cd android
-./gradlew clean
 ./gradlew assembleRelease \
   -Dorg.gradle.internal.http.connectionTimeout=120000 \
   -Dorg.gradle.internal.http.socketTimeout=120000
@@ -81,18 +86,11 @@ The APK is created at:
 android/app/build/outputs/apk/release/app-release.apk
 ```
 
-From the `aera-app/` directory, install the APK on a running emulator or USB-connected device and launch the app:
+Release APKs use a private signing key at `~/.config/aera/android-release/aera-release.jks`; its path, alias, and passwords are configured in the user-level `~/.gradle/gradle.properties` file with the `AERA_UPLOAD_*` properties. Keep the keystore and properties file outside the repository, back them up securely, and never commit either. Gradle refuses to package a release if the signing properties or keystore are missing. Configure equivalent protected secrets on any other build machine or CI runner.
 
-```sh
-"$ANDROID_HOME/platform-tools/adb" install -r android/app/build/outputs/apk/release/app-release.apk
-"$ANDROID_HOME/platform-tools/adb" shell monkey \
-  -p dev.hacksmiths.aera \
-  -c android.intent.category.LAUNCHER 1
-```
+Once a production-signed APK is published, download it from the [Aera GitHub Releases](https://github.com/tushar6076/Aera/releases) page. The previously generated debug-signed APK is not a distributable release.
 
-`ANDROID_HOME` must point to the Android SDK installation. If `adb` is already on your `PATH`, you can use `adb` instead of its full SDK path.
-
-The current Gradle configuration signs release APKs with the default debug keystore. This is suitable for local testing only; configure a private release signing key before distributing a production build. Never commit signing credentials.
+For Android and iPhone installation instructions, see [DEVICE-INSTALLATION.md](./DEVICE-INSTALLATION.md).
 
 ## iOS
 
@@ -122,6 +120,8 @@ npx react-native run-ios --simulator="<simulator-name>"
 ```
 
 Use Xcode's signing settings and Archive workflow for device or App Store distribution. Device builds require valid Apple signing credentials.
+
+For physical-device iPhone build, trust, and installation steps, see the iOS sections in the [Aera project report](../_DOCS/AERA.docx).
 
 ## Project structure
 
