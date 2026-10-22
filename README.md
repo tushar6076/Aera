@@ -32,7 +32,21 @@ The current firmware does not include a particulate-matter sensor; it reports PM
 | [`aera-cloud/`](./aera-cloud/) | FastAPI API, PostgreSQL persistence, telemetry processing | [Backend README](./aera-cloud/README.md) |
 | [`aera-web/`](./aera-web/) | React browser dashboard | [Web README](./aera-web/README.md) |
 | [`aera-app/`](./aera-app/) | Expo / React Native mobile application | [Mobile README](./aera-app/README.md) |
-| [`_DOCS/`](./_DOCS/) | Project documents | — |
+| [`_DOCS/`](./_DOCS/) | Project report, synopsis, contents, and presentation | [Project documents](#project-documents) |
+
+## Project documents
+
+The [`_DOCS/`](./_DOCS/) folder contains the project report and its companion submission materials:
+
+- [AERA project report](./_DOCS/AERA.docx) — complete technical report, including figures embedded in the document.
+- [Project contents and overview](./_DOCS/CONTENT.docx)
+- [Pre-content](./_DOCS/PRE_CONTENT.docx) — abstract, acknowledgement, and preface.
+- [Post-content](./_DOCS/POST_CONTENT.docx) — references and glossary.
+- [Project synopsis](./_DOCS/SYNOPSIS.docx) — standalone project overview.
+- [Project presentation](./_DOCS/Project%20AERA%20Presentation.pptx)
+- [AERA AQI cover page](./_DOCS/AERA%20AQI%20COVER%20PAGE.pdf)
+
+The report’s figures are embedded in the `.docx` file; loose duplicate screenshots are intentionally not kept in the repository.
 
 ## Run with Docker Compose
 
