@@ -1,5 +1,5 @@
 // aera-web/src/hooks/useDevice.jsx
-import React, { useState, useEffect, useCallback, createContext, useContext } from "react";
+import React, { useState, useEffect, useCallback, createContext, useContext, useRef } from "react";
 import { deviceService } from "../services/device";
 
 const DeviceContext = createContext(null);
@@ -11,6 +11,7 @@ export function DeviceProvider({ children }) {
   const [deviceLiveState, setDeviceLiveState] = useState(null);
   const [loading, setLoading] = useState(true);
   const [discovering, setDiscovering] = useState(false);
+  const hasLoadedDevices = useRef(false);
 
   // 1. Fetch user's claimed devices
   const fetchDevices = useCallback(async () => {
@@ -19,10 +20,12 @@ export function DeviceProvider({ children }) {
       const list = await deviceService.getMyDevices();
       const deviceList = list || [];
       setDevices(deviceList);
+      const initializeSelection = !hasLoadedDevices.current;
+      hasLoadedDevices.current = true;
 
       setSelectedDevice((prev) => {
         if (deviceList.length === 0) return null;
-        if (!prev) return deviceList[0];
+        if (!prev) return initializeSelection ? deviceList[0] : null;
         // Retain current selection if it still exists; otherwise fallback to first or null
         const stillExists = deviceList.find((d) => d.id === prev.id);
         return stillExists || deviceList[0];
@@ -86,10 +89,11 @@ export function DeviceProvider({ children }) {
 
   const release = async (deviceId) => {
     await deviceService.releaseDevice(deviceId);
-    
-    // Explicitly reset selection to Ambient if the released node is currently active
+    setDevices((current) => current.filter((device) => device.id !== deviceId));
     setSelectedDevice((current) => (current?.id === deviceId ? null : current));
-    await fetchDevices();
+    setDeviceLiveState((current) =>
+      selectedDevice?.id === deviceId ? null : current
+    );
   };
 
   const value = {

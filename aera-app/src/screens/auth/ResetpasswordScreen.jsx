@@ -8,10 +8,11 @@ import { Card } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
-import { KeyRound, Lock, ArrowRight, ArrowLeft, AlertCircle } from "lucide-react-native";
+import { KeyRound, Lock, Mail, ArrowRight, ArrowLeft, AlertCircle } from "lucide-react-native";
 
-export default function ResetPasswordScreen({ navigation }) {
-  const [token, setToken] = useState("");
+export default function ResetPasswordScreen({ navigation, route }) {
+  const [email, setEmail] = useState(route.params?.email || "");
+  const [code, setCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -21,8 +22,12 @@ export default function ResetPasswordScreen({ navigation }) {
 
   const handleReset = async () => {
     setError("");
-    if (!token.trim()) {
-      setError("Please paste the token sent to your email.");
+    if (!email.trim()) {
+      setError("Please enter the email address for your account.");
+      return;
+    }
+    if (!/^\d{6}$/.test(code.trim())) {
+      setError("Enter the 6-digit verification code sent to your email.");
       return;
     }
     if (newPassword.length < 8) {
@@ -36,10 +41,10 @@ export default function ResetPasswordScreen({ navigation }) {
 
     setLoading(true);
     try {
-      await authService.resetPassword(token.trim(), newPassword);
+      await authService.resetPassword(email.trim(), code.trim(), newPassword);
       navigation.navigate("Login");
     } catch (err) {
-      setError(err.response?.data?.detail || "Token expired or invalid.");
+      setError(err.response?.data?.detail || "Verification code expired or invalid.");
     } finally {
       setLoading(false);
     }
@@ -63,7 +68,7 @@ export default function ResetPasswordScreen({ navigation }) {
 
         <Text style={styles.title}>Update Password</Text>
         <Text style={styles.subtitle}>
-          Enter authorization token and set new credentials
+          Enter the verification code emailed to you and set a new password
         </Text>
 
         <Card style={styles.formCard}>
@@ -75,13 +80,29 @@ export default function ResetPasswordScreen({ navigation }) {
           ) : null}
 
           <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Reset Token</Text>
+            <Text style={styles.label}>Account Email</Text>
+            <Input
+              icon={Mail}
+              placeholder="name@domain.com"
+              placeholderTextColor={colors.textDim}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={email}
+              onChangeText={setEmail}
+            />
+          </View>
+
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Verification Code</Text>
             <Input
               icon={KeyRound}
-              placeholder="Paste token"
+              placeholder="6-digit code"
               placeholderTextColor={colors.textDim}
-              value={token}
-              onChangeText={setToken}
+              keyboardType="number-pad"
+              textContentType="oneTimeCode"
+              maxLength={6}
+              value={code}
+              onChangeText={setCode}
             />
           </View>
 
@@ -122,6 +143,14 @@ export default function ResetPasswordScreen({ navigation }) {
           >
             <Text style={styles.btnText}>Save New Password</Text>
             <ArrowRight size={16} color={colors.card} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onPress={() => navigation.navigate("Forgot")}
+            style={styles.resendBtn}
+          >
+            <Text style={styles.resendText}>Request a new code</Text>
           </Button>
         </Card>
       </View>
@@ -216,5 +245,14 @@ const styles = StyleSheet.create({
     color: colors.card,
     fontWeight: typography.weights.bold,
     fontSize: typography.sizes.base,
+  },
+  resendBtn: {
+    alignSelf: "center",
+    marginTop: 8,
+  },
+  resendText: {
+    color: colors.primary,
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.semibold,
   },
 });

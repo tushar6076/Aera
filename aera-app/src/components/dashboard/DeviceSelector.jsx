@@ -3,14 +3,13 @@ import React from "react";
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from "react-native";
 import { colors, typography, shadows } from "../../styles/theme";
 import { Cpu, Compass, Plus, Unlink } from "lucide-react-native";
-import { deviceService } from "../../services/device";
 
 export default function DeviceSelector({
   devices = [],
   selectedDevice = null,
   onSelectDevice,
   onOpenPairModal,
-  onDeviceUnlinked,
+  onReleaseDevice,
   locationName = "Regional",
   isOnline = false,
 }) {
@@ -25,11 +24,7 @@ export default function DeviceSelector({
           style: "destructive",
           onPress: async () => {
             try {
-              await deviceService.releaseDevice(deviceId);
-              if (selectedDevice?.id === deviceId) {
-                onSelectDevice(null);
-              }
-              if (onDeviceUnlinked) onDeviceUnlinked();
+              await onReleaseDevice(deviceId);
             } catch (err) {
               Alert.alert("Error", err.response?.data?.detail || "Failed to release node.");
             }
@@ -73,35 +68,37 @@ export default function DeviceSelector({
         {devices.map((d) => {
           const active = selectedDevice?.id === d.id;
           return (
-            <TouchableOpacity
+            <View
               key={d.id}
               style={[styles.pill, active && styles.pillActive]}
-              onPress={() => onSelectDevice(d)}
-              activeOpacity={0.8}
             >
-              <Cpu
-                size={13}
-                color={active ? colors.primary : colors.textDim}
-              />
-              <Text
-                style={[
-                  styles.pillText,
-                  active && styles.pillTextActive,
-                ]}
+              <TouchableOpacity
+                style={styles.devicePressArea}
+                onPress={() => onSelectDevice(d)}
+                activeOpacity={0.8}
               >
-                {d.name || d.id}
-              </Text>
-              
-              {active && (
-                <View
-                  style={[
-                    styles.onlineDot,
-                    { backgroundColor: isOnline ? colors.success : colors.textDim },
-                  ]}
+                <Cpu
+                  size={13}
+                  color={active ? colors.primary : colors.textDim}
                 />
-              )}
+                <Text
+                  style={[
+                    styles.pillText,
+                    active && styles.pillTextActive,
+                  ]}
+                >
+                  {d.name || d.id}
+                </Text>
+                {active && (
+                  <View
+                    style={[
+                      styles.onlineDot,
+                      { backgroundColor: isOnline ? colors.success : colors.textDim },
+                    ]}
+                  />
+                )}
+              </TouchableOpacity>
 
-              {/* Unlink button within the pill */}
               <TouchableOpacity
                 onPress={() => handleUnlink(d.id, d.name)}
                 style={styles.unlinkIconBtn}
@@ -109,7 +106,7 @@ export default function DeviceSelector({
               >
                 <Unlink size={11} color={colors.textDim} />
               </TouchableOpacity>
-            </TouchableOpacity>
+            </View>
           );
         })}
 
@@ -165,6 +162,11 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
+  },
+  devicePressArea: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
   unlinkIconBtn: {
     marginLeft: 2,

@@ -1,5 +1,5 @@
 // aera-app/src/hooks/useDevice.jsx
-import React, { useState, useEffect, useCallback, createContext, useContext } from "react";
+import React, { useState, useEffect, useCallback, createContext, useContext, useRef } from "react";
 import { deviceService } from "../services/device";
 
 const DeviceContext = createContext(null);
@@ -12,6 +12,7 @@ export function DeviceProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [discovering, setDiscovering] = useState(false);
   const [error, setError] = useState(null);
+  const hasLoadedDevices = useRef(false);
 
   // 1. Fetch user's claimed nodes
   const fetchDevices = useCallback(async () => {
@@ -20,10 +21,12 @@ export function DeviceProvider({ children }) {
       setError(null);
       const list = await deviceService.getMyDevices();
       setDevices(list || []);
+      const initializeSelection = !hasLoadedDevices.current;
+      hasLoadedDevices.current = true;
 
       setSelectedDevice((current) => {
         if (!list || list.length === 0) return null;
-        if (!current) return list[0];
+        if (!current) return initializeSelection ? list[0] : null;
         const exists = list.find((d) => d.id === current.id);
         return exists || list[0];
       });
@@ -87,7 +90,11 @@ export function DeviceProvider({ children }) {
 
   const release = async (deviceId) => {
     await deviceService.releaseDevice(deviceId);
-    await fetchDevices();
+    setDevices((current) => current.filter((device) => device.id !== deviceId));
+    setSelectedDevice((current) => (current?.id === deviceId ? null : current));
+    setDeviceLiveState((current) =>
+      selectedDevice?.id === deviceId ? null : current
+    );
   };
 
   const value = {

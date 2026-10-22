@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { View, TextInput, StyleSheet } from "react-native";
+import { View, TextInput, StyleSheet, TouchableOpacity } from "react-native";
+import { Eye, EyeOff } from "lucide-react-native";
 import { colors } from "../../styles/theme";
 
 export function Input({
@@ -9,6 +10,9 @@ export function Input({
   placeholderTextColor = colors.textDim,
   onFocus,
   onBlur,
+  showToggle = false,
+  isPasswordVisible = false,
+  onTogglePassword,
   ...props
 }) {
   const [isFocused, setIsFocused] = useState(false);
@@ -42,6 +46,21 @@ export function Input({
         }}
         {...props}
       />
+      {showToggle && onTogglePassword ? (
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={isPasswordVisible ? "Hide password" : "Show password"}
+          onPress={onTogglePassword}
+          style={styles.toggleButton}
+          hitSlop={8}
+        >
+          {isPasswordVisible ? (
+            <EyeOff size={16} color={colors.textDim} />
+          ) : (
+            <Eye size={16} color={colors.textDim} />
+          )}
+        </TouchableOpacity>
+      ) : null}
     </View>
   );
 }
@@ -68,5 +87,9 @@ const styles = StyleSheet.create({
     height: "100%",
     color: colors.text,
     fontSize: 14,
+  },
+  toggleButton: {
+    padding: 6,
+    marginRight: -4,
   },
 });

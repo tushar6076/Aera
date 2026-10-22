@@ -43,7 +43,15 @@ export function AuthProvider({ children }) {
   const register = async (registrationData) => {
     const data = await authService.register(registrationData);
     await AsyncStorage.setItem("aera_token", data.access_token);
-    return await refreshProfile();
+    try {
+      const profile = await userService.getProfile();
+      setUser(profile);
+      return profile;
+    } catch (err) {
+      await AsyncStorage.removeItem("aera_token");
+      setUser(null);
+      throw err;
+    }
   };
 
   const logout = async () => {

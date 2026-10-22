@@ -34,10 +34,7 @@ export default function SettingsPanel({ deviceContext, onClose }) {
   const activeDeviceContext = deviceContext || globalDevice;
   const { 
     devices = [], 
-    selectedDevice, 
-    setSelectedDevice, 
     release, 
-    refreshDevices 
   } = activeDeviceContext;
 
   const [fullName, setFullName] = useState(user?.full_name || "");
@@ -78,12 +75,6 @@ export default function SettingsPanel({ deviceContext, onClose }) {
     try {
       if (release) {
         await release(deviceId);
-      }
-      if (selectedDevice?.id === deviceId && setSelectedDevice) {
-        setSelectedDevice(null);
-      }
-      if (refreshDevices) {
-        await refreshDevices();
       }
     } catch (err) {
       alert(err.response?.data?.detail || "Failed to unlink device.");

@@ -1,13 +1,15 @@
 // aera-web/src/pages/Forgot.jsx
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { authService } from "@/services/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Wind, Mail, ArrowRight, ArrowLeft, CheckCircle2, AlertCircle } from "lucide-react";
 
 export default function Forgot() {
-  const [email, setEmail] = useState("");
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [email, setEmail] = useState(location.state?.email || "");
   const [loading, setLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
@@ -20,7 +22,10 @@ export default function Forgot() {
 
     try {
       const res = await authService.forgotPassword(email.trim());
-      setStatusMsg(res.message || "Reset token dispatched to your email address.");
+      setStatusMsg(res.message || "If an account exists, a verification code has been sent.");
+      navigate("/reset", {
+        state: { email: email.trim(), message: res.message },
+      });
     } catch (err) {
       setErrorMsg(
         err.response?.data?.detail || "Unable to dispatch password reset request."
@@ -50,7 +55,7 @@ export default function Forgot() {
           </div>
           <h2 className="text-3xl font-extrabold text-foreground tracking-tight">Reset Password</h2>
           <p className="text-xs sm:text-sm text-muted-foreground">
-            Enter your account email to receive an authorization link
+            Enter your account email to receive a verification code
           </p>
         </div>
 
@@ -99,7 +104,7 @@ export default function Forgot() {
               disabled={loading}
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-semibold h-11 gap-2 shadow-sm cursor-pointer transition-all active:scale-[0.99]"
             >
-              <span>{loading ? "Transmitting..." : "Send Verification Token"}</span>
+              <span>{loading ? "Sending..." : "Send Verification Code"}</span>
               <ArrowRight className="w-4 h-4" />
             </Button>
           </form>

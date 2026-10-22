@@ -77,6 +77,7 @@ export default function Dashboard() {
               onSelectDevice={setSelectedDevice}
               deviceLiveState={deviceLiveState}
               onDeviceClaimed={refreshDevices}
+              onReleaseDevice={release}
             />
           </div>
 

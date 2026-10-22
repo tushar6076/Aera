@@ -40,6 +40,8 @@ services:
       aera-cloud:
         condition: service_healthy
     restart: unless-stopped
+    networks:
+      - aera-network
 
 networks:
   aera-network:

@@ -58,3 +58,7 @@ aera-aqi/
 ```
 
 See the [project README](../README.md) for API and backend setup.
+
+## Contact
+
+For project questions, contact [contact@hacksmiths.dev](mailto:contact@hacksmiths.dev) or visit [hacksmiths.dev](https://hacksmiths.dev).

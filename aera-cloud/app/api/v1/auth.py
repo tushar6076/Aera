@@ -1,16 +1,21 @@
+import hashlib
+import hmac
+import secrets
+from datetime import datetime, timedelta, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.core.database import get_db
+from app.core.config import settings
 from app.core.security import (
     verify_password,
     get_password_hash,
     create_access_token,
-    create_password_reset_token,  # ensure you export/import this helper
-    verify_password_reset_token,
 )
 from app.db.models.user import User
+from app.db.models.password_reset_code import PasswordResetCode
 from app.schemas.auth import (
     UserRegister,
     UserLogin,
@@ -28,6 +33,18 @@ from app.services.email import (
 )
 
 router = APIRouter()
+MAX_RESET_CODE_ATTEMPTS = 5
+RESET_CODE_TTL = timedelta(minutes=15)
+
+
+def _hash_reset_code(email: str, code: str) -> str:
+    message = f"{email.lower()}:{code}".encode()
+    return hmac.new(
+        # Include the application secret so a database leak does not expose active codes.
+        settings.SECRET_KEY.encode(),
+        message,
+        hashlib.sha256,
+    ).hexdigest()
 
 
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
@@ -82,52 +99,87 @@ async def login_user(payload: UserLogin, db: AsyncSession = Depends(get_db)):
 @router.post("/forgot-password", response_model=MessageResponse)
 async def forgot_password(payload: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
     """
-    Sends a signed 15-minute reset link via Titan Mail.
+    Sends an expiring one-time verification code via email.
     Always returns 200 OK even if the email doesn't exist to prevent email enumeration.
     """
     result = await db.execute(select(User).where(User.email == payload.email))
     user = result.scalars().first()
 
     if user:
-        # 1. Generate the signed 15-minute token for the email
-        reset_token = create_password_reset_token(user.email)
-        
-        # 2. Render the template synchronously (no await)
-        html_body = render_password_reset_email(reset_token=reset_token)
-        
-        # 3. Dispatch asynchronously via Titan Mail worker
+        code = f"{secrets.randbelow(1_000_000):06d}"
+        reset_result = await db.execute(
+            select(PasswordResetCode).where(PasswordResetCode.user_id == user.id)
+        )
+        reset_record = reset_result.scalars().first()
+        if reset_record:
+            reset_record.code_hash = _hash_reset_code(user.email, code)
+            reset_record.expires_at = datetime.now(timezone.utc) + RESET_CODE_TTL
+            reset_record.attempts = 0
+        else:
+            db.add(
+                PasswordResetCode(
+                    user_id=user.id,
+                    code_hash=_hash_reset_code(user.email, code),
+                    expires_at=datetime.now(timezone.utc) + RESET_CODE_TTL,
+                    attempts=0,
+                )
+            )
+        await db.commit()
+
         await send_mail(
             to_email=user.email,
             subject="Aera - Reset Your Password",
-            html_body=html_body,
+            html_body=render_password_reset_email(reset_code=code),
         )
 
     return {
-        "message": "If an account with that email exists, a password reset link has been dispatched."
+        "message": "If an account with that email exists, a verification code has been sent."
     }
 
 
 @router.post("/reset-password", response_model=MessageResponse)
 async def reset_password(payload: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
-    """Validates the reset token and updates the user's password."""
-    email = verify_password_reset_token(payload.token)
-    if not email:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="The reset link is invalid or has expired."
-        )
-
-    result = await db.execute(select(User).where(User.email == email))
+    """Validates a one-time email code and updates the user's password."""
+    result = await db.execute(select(User).where(User.email == payload.email))
     user = result.scalars().first()
-
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found."
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The verification code is invalid or has expired."
         )
 
-    # Hash and persist new password
+    code_result = await db.execute(
+        select(PasswordResetCode)
+        .where(PasswordResetCode.user_id == user.id)
+        .with_for_update()
+    )
+    reset_record = code_result.scalars().first()
+    if not reset_record or reset_record.expires_at <= datetime.now(timezone.utc):
+        if reset_record:
+            await db.delete(reset_record)
+            await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The verification code is invalid or has expired."
+        )
+
+    if reset_record.attempts >= MAX_RESET_CODE_ATTEMPTS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The verification code is invalid or has expired."
+        )
+
+    expected_hash = _hash_reset_code(user.email, payload.code)
+    if not hmac.compare_digest(expected_hash, reset_record.code_hash):
+        reset_record.attempts += 1
+        await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The verification code is invalid or has expired."
+        )
+
     user.hashed_password = get_password_hash(payload.new_password)
+    await db.delete(reset_record)
     await db.commit()
 
     await send_mail(

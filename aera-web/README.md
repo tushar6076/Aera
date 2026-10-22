@@ -23,6 +23,13 @@
 - npm
 - Aera Cloud API for sign-in, readings, and device features
 
+## Public services
+
+- Dashboard: [aera.hacksmiths.dev](https://aera.hacksmiths.dev)
+- API: [aera-cloud.hacksmiths.dev](https://aera-cloud.hacksmiths.dev)
+
+The deployed dashboard must be built with `VITE_API_URL=https://aera-cloud.hacksmiths.dev` and `VITE_WS_URL=wss://aera-cloud.hacksmiths.dev`. The cloud service must allow `https://aera.hacksmiths.dev` in `BACKEND_CORS_ORIGINS`.
+
 ## Local development
 
 Create the local Vite settings and install the lockfile dependencies:
@@ -51,7 +58,7 @@ npm run build
 npm run preview
 ```
 
-`npm test` runs the starter Vitest suite in `tests/`; test files are kept separate from application code. The current tests cover AQI category boundaries and loading-state messages, not API integration or complete user flows. `tests/setup.js` registers the shared jest-dom matchers used by the component tests. `npm run build` writes the static production site to `dist/`.
+`npm test` runs the Vitest suite in `tests/`; test files are kept separate from application code. Tests cover auth provider token/profile handling, registration and login screen transitions, the email-code password-reset flow, device unlink state, AQI category boundaries, and loading-state messages. Auth/device UI tests mock the service layer and do not make requests to deployed services or verify actual email delivery. `tests/setup.js` registers the shared jest-dom matchers used by the component tests. `npm run build` writes the static production site to `dist/`.
 
 ## Docker
 
@@ -75,3 +82,7 @@ src/
 ```
 
 See the [project README](../README.md) for backend and full-stack setup.
+
+## Contact
+
+For project questions, contact [contact@hacksmiths.dev](mailto:contact@hacksmiths.dev) or visit [hacksmiths.dev](https://hacksmiths.dev).

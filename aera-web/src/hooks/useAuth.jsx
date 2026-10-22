@@ -42,7 +42,15 @@ export function AuthProvider({ children }) {
   const register = async (registrationData) => {
     const data = await authService.register(registrationData);
     localStorage.setItem("aera_token", data.access_token);
-    return await refreshProfile();
+    try {
+      const profile = await userService.getProfile();
+      setUser(profile);
+      return profile;
+    } catch (err) {
+      localStorage.removeItem("aera_token");
+      setUser(null);
+      throw err;
+    }
   };
 
   const logout = () => {

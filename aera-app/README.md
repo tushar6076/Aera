@@ -34,9 +34,9 @@ npm ci
 npm test
 ```
 
-Automated tests are kept separately from application code in the top-level `tests/` folder. Use `npm run test:watch` while developing tests. The current starter suite verifies AQI category boundaries and loading-state rendering; it does not yet cover API integration or complete app flows. No shared Jest setup file is needed for these tests. Hardware, API integration, simulator and device flows require separate runtime checks.
+Automated tests are kept separately from application code in the top-level `tests/` folder. Use `npm run test:watch` while developing tests. The mobile tests also cover password visibility and device unlink state. API behavior is covered separately by the backend tests; mocked tests do not verify live service connectivity or actual email delivery.
 
-The app uses the hosted Aera API at `aera-cloud.hacksmiths.dev` by default. This endpoint is served through the configured Cloudflare Tunnel, so the backend, its database, and the tunnel routes must be available for sign-in and cloud-backed features to work. To use a different backend, change `API_BASE_URL` and `WS_BASE_URL` in `src/services/api.js` before building. For emulators and physical devices, configure an address reachable from that device; its `localhost` does not refer to the development computer.
+The app uses the hosted Aera API at [aera-cloud.hacksmiths.dev](https://aera-cloud.hacksmiths.dev) by default. The browser dashboard is [aera.hacksmiths.dev](https://aera.hacksmiths.dev). The API is served through the configured Cloudflare Tunnel, so the backend, its database, and the tunnel routes must be available for sign-in and cloud-backed features to work. To use a different backend, change `API_BASE_URL` and `WS_BASE_URL` in `src/services/api.js` before building. For emulators and physical devices, configure an address reachable from that device; its `localhost` does not refer to the development computer.
 
 ## App icon and splash screen
 
@@ -139,3 +139,7 @@ aera-app/
 ```
 
 See the [project README](../README.md) for backend and full-stack setup.
+
+## Contact
+
+For project questions, contact [contact@hacksmiths.dev](mailto:contact@hacksmiths.dev) or visit [hacksmiths.dev](https://hacksmiths.dev).

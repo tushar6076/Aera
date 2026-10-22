@@ -2,6 +2,8 @@
 
 Aera is an air-quality monitoring project that connects an ESP32 sensor station to a cloud API and presents its readings in browser and mobile applications. It combines device telemetry, account and device management, historical readings, live updates, and general air-quality guidance.
 
+**Project:** [aera.hacksmiths.dev](https://aera.hacksmiths.dev) · **API:** [aera-cloud.hacksmiths.dev](https://aera-cloud.hacksmiths.dev) · **Maintainer:** [HackSmiths](https://hacksmiths.dev) · [contact@hacksmiths.dev](mailto:contact@hacksmiths.dev)
+
 > **Important:** Aera is an environmental monitoring and informational project, not a certified gas detector, life-safety system, or medical device. Sensor estimates and generated guidance are not a substitute for calibrated instruments, emergency alarms, or professional advice.
 
 ## How the system fits together
@@ -80,7 +82,7 @@ Docker Compose starts the cloud API, static web app, and Cloudflare Tunnel conne
    - API health: <http://localhost:8085/health>
    - Interactive API documentation: <http://localhost:8085/docs>
 
-The tunnel forwards traffic according to the ingress rules configured for that tunnel in Cloudflare. To serve the dashboard through a public hostname, set the root `VITE_API_URL` and `VITE_WS_URL` to the externally reachable API's HTTPS and WSS URLs before building. Vite embeds these values into the static bundle at image-build time; rebuild `aera-web` after changing them:
+The public dashboard is [aera.hacksmiths.dev](https://aera.hacksmiths.dev), and the API is [aera-cloud.hacksmiths.dev](https://aera-cloud.hacksmiths.dev). The tunnel forwards traffic according to the ingress rules configured for that tunnel in Cloudflare. To serve the dashboard through a public hostname, set the root `VITE_API_URL` to `https://aera-cloud.hacksmiths.dev` and `VITE_WS_URL` to `wss://aera-cloud.hacksmiths.dev` before building. Vite embeds these values into the static bundle at image-build time; rebuild `aera-web` after changing them:
 
 ```sh
 docker compose up --build -d aera-web
@@ -136,7 +138,7 @@ npm ci
 npm start
 ```
 
-Follow the Expo CLI prompts to launch on a simulator or device. The app currently uses the hosted API by default. For local development, update the API base URLs in `aera-app/src/services/api.js`; use a network-reachable host when testing on a physical device. See the [mobile guide](./aera-app/README.md) for details.
+Follow the Expo CLI prompts to launch on a simulator or device. The app uses [aera-cloud.hacksmiths.dev](https://aera-cloud.hacksmiths.dev) by default. For local development, update the API base URLs in `aera-app/src/services/api.js`; use a network-reachable host when testing on a physical device. See the [mobile guide](./aera-app/README.md) for details.
 
 ### ESP32 device
 
@@ -161,7 +163,7 @@ npm run lint
 npm run build
 ```
 
-From `aera-app/`, run its Jest/React Native test suite with `npm test`. Both JavaScript clients also support `npm run test:watch` for interactive development. The current web and mobile suites are starter unit/component tests covering AQI category boundaries and loading-state messages; they do not yet cover API integration, full user flows, or device behavior. Test coverage output is local and ignored by Git.
+From `aera-app/`, run its Jest/React Native test suite with `npm test`. From `aera-web/`, `npm test` runs the Vitest suite. The suites include focused coverage for registration and login state, password-reset verification codes, password visibility, and device unlink state, in addition to unit/component checks. These automated tests use mocked client services and do not replace deployed API, email-delivery, hardware, or end-to-end environment checks. Both JavaScript clients also support `npm run test:watch` for interactive development. Test coverage output is local and ignored by Git.
 
 Check the Expo app configuration and SDK-compatible package versions from `aera-app/` with:
 
@@ -170,3 +172,7 @@ npx expo-doctor
 ```
 
 Docker Compose can validate service configuration with `docker compose config`. Firmware must be compiled and tested on the intended ESP32 hardware; this repository does not include an automated firmware test suite.
+
+## Contact
+
+For project questions, contact [contact@hacksmiths.dev](mailto:contact@hacksmiths.dev) or visit [hacksmiths.dev](https://hacksmiths.dev).

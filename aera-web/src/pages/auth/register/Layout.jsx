@@ -2,14 +2,13 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { authService } from "@/services/auth";
 import Step1 from "./Step1";
 import Step2 from "./Step2";
 import { Wind, AlertCircle, Check } from "lucide-react";
 
 export default function RegisterLayout() {
   const navigate = useNavigate();
-  const { setUser } = useAuth();
+  const { register } = useAuth();
 
   const [step, setStep] = useState(1);
   const [fullName, setFullName] = useState("");
@@ -49,14 +48,12 @@ export default function RegisterLayout() {
 
     setLoading(true);
     try {
-      const data = await authService.register({
+      await register({
         email: email.trim(),
         password,
         full_name: fullName.trim() || undefined,
       });
 
-      localStorage.setItem("aera_token", data.access_token);
-      setUser(data.user);
       navigate("/");
     } catch (err) {
       setError(

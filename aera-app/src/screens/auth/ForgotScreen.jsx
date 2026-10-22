@@ -10,8 +10,8 @@ import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { Mail, ArrowRight, ArrowLeft, CheckCircle2, AlertCircle } from "lucide-react-native";
 
-export default function ForgotScreen({ navigation }) {
-  const [email, setEmail] = useState("");
+export default function ForgotScreen({ navigation, route }) {
+  const [email, setEmail] = useState(route?.params?.email || "");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -24,10 +24,13 @@ export default function ForgotScreen({ navigation }) {
     setLoading(true);
     try {
       const res = await authService.forgotPassword(email.trim());
-      setMessage(res.message || "Reset token transmitted to your email.");
-      setTimeout(() => navigation.navigate("ResetPassword"), 2000);
+      setMessage(res.message || "If an account exists, a verification code has been sent.");
+      setTimeout(
+        () => navigation.navigate("ResetPassword", { email: email.trim() }),
+        1000
+      );
     } catch (err) {
-      setError(err.response?.data?.detail || "Failed to dispatch reset token.");
+      setError(err.response?.data?.detail || "Failed to request a verification code.");
     } finally {
       setLoading(false);
     }
@@ -50,7 +53,7 @@ export default function ForgotScreen({ navigation }) {
         </Button>
 
         <Text style={styles.title}>Reset Authorization</Text>
-        <Text style={styles.subtitle}>Enter account email to dispatch token</Text>
+        <Text style={styles.subtitle}>Enter your account email to receive a verification code</Text>
 
         <Card style={styles.formCard}>
           {message ? (
@@ -88,7 +91,7 @@ export default function ForgotScreen({ navigation }) {
             onPress={handleSubmit}
             style={styles.actionBtn}
           >
-            <Text style={styles.btnText}>Dispatch Token</Text>
+            <Text style={styles.btnText}>Send Verification Code</Text>
             <ArrowRight size={16} color={colors.card} />
           </Button>
         </Card>

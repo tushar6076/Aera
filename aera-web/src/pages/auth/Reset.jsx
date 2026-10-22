@@ -1,29 +1,37 @@
 // aera-web/src/pages/Reset.jsx
 import React, { useState } from "react";
-import { Link, useSearchParams, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { authService } from "@/services/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Wind, Lock, ArrowRight, CheckCircle2, AlertCircle } from "lucide-react";
+import { Wind, Lock, Mail, Eye, EyeOff, ArrowRight, CheckCircle2, AlertCircle } from "lucide-react";
 
 export default function Reset() {
-  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const navigate = useNavigate();
 
-  const tokenParam = searchParams.get("token") || "";
-  const [token, setToken] = useState(tokenParam);
+  const [email, setEmail] = useState(location.state?.email || "");
+  const [code, setCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const notice = location.state?.message;
 
   const handleReset = async (e) => {
     e.preventDefault();
     setErrorMsg("");
 
-    if (!token.trim()) {
-      setErrorMsg("A valid reset token is required.");
+    if (!email.trim()) {
+      setErrorMsg("Enter the email address for your account.");
+      return;
+    }
+
+    if (!/^\d{6}$/.test(code.trim())) {
+      setErrorMsg("Enter the 6-digit verification code sent to your email.");
       return;
     }
 
@@ -39,12 +47,12 @@ export default function Reset() {
 
     setLoading(true);
     try {
-      await authService.resetPassword(token.trim(), newPassword);
+      await authService.resetPassword(email.trim(), code.trim(), newPassword);
       setSuccess(true);
       setTimeout(() => navigate("/login"), 2500);
     } catch (err) {
       setErrorMsg(
-        err.response?.data?.detail || "Password reset token expired or invalid."
+        err.response?.data?.detail || "Verification code expired or invalid."
       );
     } finally {
       setLoading(false);
@@ -95,6 +103,12 @@ export default function Reset() {
             </div>
           ) : (
             <form onSubmit={handleReset} className="space-y-4">
+              {notice && (
+                <div className="flex items-center gap-2 p-3 text-xs rounded-xl border border-border bg-muted/40 text-muted-foreground">
+                  <Mail className="w-4 h-4 shrink-0" />
+                  <span>{notice}</span>
+                </div>
+              )}
               {errorMsg && (
                 <div className="flex items-center gap-2 p-3 text-xs rounded-xl border border-destructive/30 bg-destructive/10 text-destructive">
                   <AlertCircle className="w-4 h-4 shrink-0 text-destructive" />
@@ -102,21 +116,39 @@ export default function Reset() {
                 </div>
               )}
 
-              {!tokenParam && (
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
-                    Security Token
-                  </label>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                  Account Email
+                </label>
+                <div className="relative">
                   <Input
-                    type="text"
+                    type="email"
                     required
-                    value={token}
-                    onChange={(e) => setToken(e.target.value)}
-                    placeholder="Paste received token"
-                    className="bg-muted/40 border-border text-foreground font-mono text-xs h-10 focus-visible:ring-ring"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="name@domain.com"
+                    className="bg-muted/40 border-border text-foreground placeholder:text-muted-foreground/60 pl-10 h-10 text-sm focus-visible:ring-ring"
                   />
+                  <Mail className="w-4 h-4 text-muted-foreground absolute left-3.5 top-3 pointer-events-none" />
                 </div>
-              )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                  Verification Code
+                </label>
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  required
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                  placeholder="6-digit code"
+                  className="bg-muted/40 border-border text-foreground font-mono text-xs h-10 focus-visible:ring-ring"
+                />
+              </div>
 
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
@@ -124,14 +156,17 @@ export default function Reset() {
                 </label>
                 <div className="relative">
                   <Input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     required
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Min. 8 characters"
-                    className="bg-muted/40 border-border text-foreground placeholder:text-muted-foreground/60 pl-10 h-10 text-sm focus-visible:ring-ring"
+                    className="bg-muted/40 border-border text-foreground placeholder:text-muted-foreground/60 pl-10 pr-10 h-10 text-sm focus-visible:ring-ring"
                   />
                   <Lock className="w-4 h-4 text-muted-foreground absolute left-3.5 top-3 pointer-events-none" />
+                  <button type="button" onClick={() => setShowPassword((visible) => !visible)} className="absolute right-3 top-2.5 text-muted-foreground" aria-label={showPassword ? "Hide password" : "Show password"}>
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
 
@@ -141,14 +176,17 @@ export default function Reset() {
                 </label>
                 <div className="relative">
                   <Input
-                    type="password"
+                    type={showConfirmPassword ? "text" : "password"}
                     required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Re-enter password"
-                    className="bg-muted/40 border-border text-foreground placeholder:text-muted-foreground/60 pl-10 h-10 text-sm focus-visible:ring-ring"
+                    className="bg-muted/40 border-border text-foreground placeholder:text-muted-foreground/60 pl-10 pr-10 h-10 text-sm focus-visible:ring-ring"
                   />
                   <Lock className="w-4 h-4 text-muted-foreground absolute left-3.5 top-3 pointer-events-none" />
+                  <button type="button" onClick={() => setShowConfirmPassword((visible) => !visible)} className="absolute right-3 top-2.5 text-muted-foreground" aria-label={showConfirmPassword ? "Hide password" : "Show password"}>
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
 
@@ -164,9 +202,18 @@ export default function Reset() {
           )}
 
           <div className="mt-6 pt-6 border-t border-border text-center">
-            <Link to="/login" className="text-xs font-semibold text-primary hover:underline">
-              Return to Login
-            </Link>
+            <div className="flex justify-center gap-4">
+              <Link to="/login" className="text-xs font-semibold text-primary hover:underline">
+                Return to Login
+              </Link>
+              <Link
+                to="/forgot"
+                state={{ email }}
+                className="text-xs font-semibold text-muted-foreground hover:text-foreground hover:underline"
+              >
+                Request a new code
+              </Link>
+            </div>
           </div>
         </div>
       </div>

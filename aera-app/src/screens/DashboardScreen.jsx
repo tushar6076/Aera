@@ -26,6 +26,7 @@ export default function DashboardScreen({ navigation }) {
     setSelectedDevice,
     deviceLiveState,
     refreshDevices,
+    release,
   } = useDevice();
 
   const [refreshing, setRefreshing] = useState(false);
@@ -79,6 +80,7 @@ export default function DashboardScreen({ navigation }) {
           devices={devices}
           selectedDevice={selectedDevice}
           onSelectDevice={setSelectedDevice}
+          onReleaseDevice={release}
           onOpenPairModal={() => setClaimModalVisible(true)}
           locationName={cityName}
           isOnline={isStationActive}

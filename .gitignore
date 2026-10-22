@@ -122,5 +122,3 @@ aera-app/ios/
 logs/
 *.log
 npm-debug.log*
-
-_DOCS/

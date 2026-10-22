@@ -35,8 +35,6 @@ export default function SettingsScreen() {
   const { user, setUser, logout } = useAuth();
   const { 
     devices, 
-    selectedDevice, 
-    setSelectedDevice, 
     release, 
     refreshDevices 
   } = useDevice();
@@ -80,11 +78,6 @@ export default function SettingsScreen() {
     try {
       // 1. Release node via global DeviceContext (handles API call and list refresh)
       await release(targetDevice.id);
-
-      // 2. If the unlinked node was active on the dashboard, reset to Ambient
-      if (selectedDevice?.id === targetDevice.id) {
-        setSelectedDevice(null);
-      }
 
       setTargetDevice(null);
     } catch (err) {

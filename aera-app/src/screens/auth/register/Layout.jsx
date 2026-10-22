@@ -1,8 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "../../../hooks/useAuth";
-import { authService } from "../../../services/auth";
 import { colors, typography, shadows } from "../../../styles/theme";
 
 import ScreenLayout from "../../../components/layout/ScreenLayout";
@@ -13,7 +11,7 @@ import Step2 from "./Step2";
 import { Wind, AlertCircle, Check } from "lucide-react-native";
 
 export default function RegisterLayout({ navigation }) {
-  const { setUser } = useAuth();
+  const { register } = useAuth();
   const [step, setStep] = useState(1);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -45,14 +43,11 @@ export default function RegisterLayout({ navigation }) {
 
     setLoading(true);
     try {
-      const data = await authService.register({
+      await register({
         email: email.trim(),
         password,
         full_name: fullName.trim() || undefined,
       });
-
-      await AsyncStorage.setItem("aera_token", data.access_token);
-      setUser(data.user);
     } catch (err) {
       setError(err.response?.data?.detail || "Registration failed. Verify details.");
     } finally {

@@ -20,6 +20,7 @@ from app.db.models.user import User
 from app.db.models.device import Device
 from app.db.models.reading import Reading
 from app.db.models.ai import ChatMessage
+from app.db.models.password_reset_code import PasswordResetCode
 
 # 3. Point target_metadata to Base.metadata
 target_metadata = Base.metadata

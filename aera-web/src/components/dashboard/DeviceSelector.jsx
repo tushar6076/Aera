@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { deviceService } from "@/services/device";
 import {
   Cpu,
   Compass,
@@ -19,6 +18,7 @@ export default function DeviceSelector({
   onSelectDevice,
   deviceLiveState = null,
   onDeviceClaimed,
+  onReleaseDevice,
 }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [claimModalOpen, setClaimModalOpen] = useState(false);
@@ -32,13 +32,7 @@ export default function DeviceSelector({
 
     try {
       setUnclaiming(true);
-      await deviceService.releaseDevice(devId);
-      if (selectedDevice?.id === devId) {
-        onSelectDevice(null);
-      }
-      if (onDeviceClaimed) {
-        await onDeviceClaimed();
-      }
+      await onReleaseDevice(devId);
     } catch (err) {
       alert(err.response?.data?.detail || "Failed to release device.");
     } finally {

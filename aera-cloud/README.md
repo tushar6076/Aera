@@ -20,6 +20,8 @@ The `aera-cloud` service is Aera's asynchronous backend. It accepts ESP32 readin
 
 ## Configuration
 
+The production API hostname is [aera-cloud.hacksmiths.dev](https://aera-cloud.hacksmiths.dev); the browser dashboard is [aera.hacksmiths.dev](https://aera.hacksmiths.dev). Configure `BACKEND_CORS_ORIGINS` to permit the dashboard origin when serving it publicly.
+
 Run commands from this directory so the service loads `aera-cloud/.env`:
 
 ```sh
@@ -86,7 +88,7 @@ The top-level router is mounted under `/api`:
 | Area | Example routes |
 | --- | --- |
 | Device ingestion | `POST /api/device/telemetry/ingest`, `WS /api/device/ws/{device_id}` |
-| Authentication | `/api/v1/auth/register`, `/login`, `/forgot-password`, `/reset-password` |
+| Authentication | `/api/v1/auth/register`, `/login`, `/forgot-password`, `/reset-password` (6-digit email code, expires in 15 minutes) |
 | User and devices | `/api/v1/user/me`, `/api/v1/user/devices`, `/api/v1/user/claim-device` |
 | Monitoring | `/api/v1/monitoring/latest/{device_id}`, `/history/{device_id}`, `WS /api/v1/monitoring/ws/live/{device_id}` |
 | AI | `/api/v1/ai/chat`, `/api/v1/ai/history/{session_id}` |
@@ -101,7 +103,7 @@ Run the suite from `aera-cloud/`:
 pytest
 ```
 
-The test fixtures use PostgreSQL through `DATABASE_URL` (or a local default) and clean up test-pattern records. Configure a **disposable test database** before running tests; never aim the test suite at production or a database containing user data.
+The test fixtures use PostgreSQL through `DATABASE_URL` (or a local default) and clean up test-pattern records. Configure a **disposable test database** before running tests; never aim the test suite at production or a database containing user data. Auth tests cover the emailed reset-code flow, including expiry, attempt limits, reissue, and one-time use. They mock SMTP delivery; they do not verify delivery to a real inbox.
 
 ## Layout
 
@@ -118,3 +120,7 @@ aera-cloud/
 ├── main.py               # ASGI entry point
 └── requirements.txt      # Python dependencies
 ```
+
+## Contact
+
+For project questions, contact [contact@hacksmiths.dev](mailto:contact@hacksmiths.dev) or visit [hacksmiths.dev](https://hacksmiths.dev).
